@@ -5,6 +5,12 @@
 
 export type Tier = "primary" | "secondary";
 
+export type InventoryDomain =
+  | "kitchen"
+  | "electronics"
+  | "garage"
+  | "bathroom";
+
 /** DM-2 */
 export interface Capability {
   name: string;
@@ -16,6 +22,24 @@ export interface Item {
   id: string;
   name: string;
   domain: string;
+  quantity?: number | null;
+  capabilities: Capability[];
+}
+
+/** DM-9: confirmed, Clerk-owned inventory returned by API-9. */
+export interface OwnedInventoryItem extends Omit<Item, "domain"> {
+  domain: InventoryDomain;
+  quantity: number | null;
+  source: "photo";
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** DM-9: reviewed fields accepted by transactional confirmation. */
+export interface ConfirmedInventoryItemInput {
+  name: string;
+  domain: InventoryDomain;
+  quantity: number | null;
   capabilities: Capability[];
 }
 
@@ -60,12 +84,7 @@ export interface EvaluateError {
   hint: string;
 }
 
-export type InventoryScanDomain =
-  | "kitchen"
-  | "electronics"
-  | "garage"
-  | "bathroom"
-  | "unclassified";
+export type InventoryScanDomain = InventoryDomain | "unclassified";
 export type InventoryScanConfidence = "high" | "medium" | "low";
 
 /** API-7: provisional, review-required candidate produced from one photo. */
@@ -85,7 +104,7 @@ export interface InventoryScanResult {
   needsReview: true;
 }
 
-/** DM-7: storage is versioned JSON. */
+/** DM-7: guest storage remains versioned JSON. */
 export interface InventoryFile {
   version: number;
   unscannedRooms: string[];

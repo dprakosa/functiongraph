@@ -9,9 +9,31 @@ vi.mock("./_lib/handler", () => ({
   handleEvaluate: vi.fn(),
 }));
 
+vi.mock("./_lib/inventoryStore", () => ({
+  InventoryStoreUnavailableError: class InventoryStoreUnavailableError extends Error {},
+  listInventoryItems: vi.fn(),
+}));
+
 import evaluate from "./evaluate";
 import { authenticateEvaluateRequest } from "./_lib/auth";
 import { handleEvaluate } from "./_lib/handler";
+import {
+  InventoryStoreUnavailableError,
+  listInventoryItems,
+} from "./_lib/inventoryStore";
+
+const personalItems = [
+  {
+    id: "f65cf02e-134f-4bb7-bec8-1c43767315c3",
+    name: "Desk lamp",
+    domain: "electronics" as const,
+    quantity: 1,
+    capabilities: [{ name: "lights desk", tier: "primary" as const }],
+    source: "photo" as const,
+    createdAt: "2026-07-11T00:00:00.000Z",
+    updatedAt: "2026-07-11T00:00:00.000Z",
+  },
+];
 
 function request(
   overrides: Partial<VercelRequest> = {},
@@ -42,6 +64,7 @@ describe("POST /api/evaluate authentication boundary", () => {
       ok: true,
       userId: "user_test",
     });
+    vi.mocked(listInventoryItems).mockResolvedValue(personalItems);
   });
 
   it("keeps the friendly 405 contract without invoking authentication", async () => {
@@ -50,7 +73,9 @@ describe("POST /api/evaluate authentication boundary", () => {
     await evaluate(request({ method: "GET" }), outgoing.response);
 
     expect(authenticateEvaluateRequest).not.toHaveBeenCalled();
+    expect(listInventoryItems).not.toHaveBeenCalled();
     expect(handleEvaluate).not.toHaveBeenCalled();
+    expect(listInventoryItems).not.toHaveBeenCalled();
     expect(outgoing.status).toHaveBeenCalledWith(405);
     expect(outgoing.json).toHaveBeenCalledWith({
       error: "that method isn't supported",
@@ -79,7 +104,7 @@ describe("POST /api/evaluate authentication boundary", () => {
     expect(outgoing.json).toHaveBeenCalledWith(body);
   });
 
-  it("passes a valid session into the unchanged evaluation handler", async () => {
+  it("loads and passes only the authenticated user's inventory", async () => {
     const result: Awaited<ReturnType<typeof handleEvaluate>> = {
       status: 200,
       body: {
@@ -106,11 +131,29 @@ describe("POST /api/evaluate authentication boundary", () => {
 
     await evaluate(incoming, outgoing.response);
 
+    expect(listInventoryItems).toHaveBeenCalledWith("user_test");
     expect(handleEvaluate).toHaveBeenCalledWith(
       { text: "uncached test product" },
       "203.0.113.8",
+      personalItems,
     );
     expect(outgoing.status).toHaveBeenCalledWith(200);
     expect(outgoing.json).toHaveBeenCalledWith(result.body);
+  });
+
+  it("fails closed when personal inventory cannot be loaded", async () => {
+    vi.mocked(listInventoryItems).mockRejectedValue(
+      new InventoryStoreUnavailableError(),
+    );
+    const outgoing = response();
+
+    await evaluate(request(), outgoing.response);
+
+    expect(handleEvaluate).not.toHaveBeenCalled();
+    expect(outgoing.status).toHaveBeenCalledWith(503);
+    expect(outgoing.json).toHaveBeenCalledWith({
+      error: "personal inventory is temporarily unavailable",
+      hint: "wait a moment and try the evaluation again",
+    });
   });
 });

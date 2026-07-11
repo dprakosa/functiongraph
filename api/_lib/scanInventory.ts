@@ -1,14 +1,13 @@
 import { createHash } from "node:crypto";
 import sharp from "sharp";
-import inventoryFile from "../../src/data/inventory.json" with { type: "json" };
 import { deriveVocabulary } from "../../src/lib/vocabulary.js";
 import type {
   Capability,
   EvaluateError,
-  InventoryFile,
   InventoryScanConfidence,
   InventoryScanDomain,
   InventoryScanResult,
+  Item,
   Tier,
 } from "../../src/lib/types.js";
 import {
@@ -18,7 +17,6 @@ import {
   type LiveConfig,
 } from "./live.js";
 
-const inventory = inventoryFile as InventoryFile;
 const OPENAI_CHAT_COMPLETIONS = "https://api.openai.com/v1/chat/completions";
 const IMMUTABLE_SNAPSHOT_SUFFIX = /-\d{4}-\d{2}-\d{2}$/;
 const MAX_IMAGE_BYTES = 2.5 * 1024 * 1024;
@@ -402,9 +400,10 @@ async function detectItems(
   imageDataUrl: string,
   roomHint: string | undefined,
   userId: string,
+  items: Item[],
   config: ScanConfig,
 ): Promise<RawScanResult> {
-  const vocabularyNames = [...deriveVocabulary(inventory.items).keys()];
+  const vocabularyNames = [...deriveVocabulary(items).keys()];
   let response: Response;
   try {
     response = await fetch(OPENAI_CHAT_COMPLETIONS, {
@@ -481,6 +480,7 @@ async function detectItems(
 export async function handleInventoryScan(
   rawBody: unknown,
   userId: string,
+  items: Item[],
   now = Date.now(),
 ): Promise<InventoryScanHandlerResponse> {
   try {
@@ -495,11 +495,17 @@ export async function handleInventoryScan(
         "wait a minute before scanning another photo",
       );
     }
-    const raw = await detectItems(processedImage, request.roomHint, userId, config);
+    const raw = await detectItems(
+      processedImage,
+      request.roomHint,
+      userId,
+      items,
+      config,
+    );
     const canonical = raw.items.length
       ? await canonicalizeCapabilityGroups(
           raw.items.map((item) => item.capabilities),
-          inventory.items,
+          items,
           config,
         )
       : [];

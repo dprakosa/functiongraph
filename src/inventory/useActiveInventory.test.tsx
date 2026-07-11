@@ -1,18 +1,22 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import inventoryFile from "../data/inventory.json";
-import type { Item } from "../lib/types";
+import type { OwnedInventoryItem } from "../lib/types";
 import { useActiveInventory } from "./useActiveInventory";
 
-const PERSONAL_ITEMS: Item[] = [
+const PERSONAL_ITEMS: OwnedInventoryItem[] = [
   {
     id: "desk-lamp",
     name: "Desk lamp",
     domain: "electronics",
+    quantity: 1,
     capabilities: [
       { name: "lights a desk", tier: "primary" },
       { name: "adds ambient light", tier: "secondary" },
     ],
+    source: "photo",
+    createdAt: "2026-07-11T00:00:00.000Z",
+    updatedAt: "2026-07-11T00:00:00.000Z",
   },
 ];
 
@@ -145,6 +149,25 @@ describe("useActiveInventory", () => {
         items: null,
         error: "inventory response was not valid",
         hint: "Check your connection and try loading your inventory again.",
+      });
+    });
+  });
+
+  it("rejects personal rows with malformed ownership metadata", async () => {
+    const fetchMock = installFetchMock();
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        items: [{ ...PERSONAL_ITEMS[0], source: "guest", createdAt: "not-a-date" }],
+      }),
+    );
+
+    const { result } = renderHook(() => useActiveInventory("signed-in"));
+
+    await waitFor(() => {
+      expect(result.current).toMatchObject({
+        status: "error",
+        items: null,
+        error: "inventory response was not valid",
       });
     });
   });

@@ -1,9 +1,17 @@
 import sharp from "sharp";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import inventoryFile from "../../src/data/inventory.json";
+import type { InventoryFile, Item } from "../../src/lib/types";
 import {
-  handleInventoryScan,
+  handleInventoryScan as handleInventoryScanWithItems,
   resetInventoryScanRateLimitForTests,
 } from "./scanInventory";
+
+const guestItems = (inventoryFile as InventoryFile).items;
+
+function handleInventoryScan(rawBody: unknown, userId: string, now = Date.now()) {
+  return handleInventoryScanWithItems(rawBody, userId, guestItems, now);
+}
 
 let jpegDataUrl: string;
 let pngDataUrl: string;
@@ -154,6 +162,37 @@ describe("inventory photo detection", () => {
     expect(image.url).toMatch(/^data:image\/jpeg;base64,/);
     expect(image.url).not.toBe(pngDataUrl);
     expect(payload.messages[1].content[0].text).toContain("kitchen");
+  });
+
+  it("builds the scan prompt from the authenticated personal vocabulary", async () => {
+    const personalItems: Item[] = [
+      {
+        id: "gem-polisher",
+        name: "Gem polisher",
+        domain: "garage",
+        capabilities: [{ name: "polishes gemstones", tier: "primary" }],
+      },
+    ];
+    const fetchMock = installChatMock({
+      items: [
+        {
+          ...scanResult.items[0],
+          capabilities: [{ name: "polishes gemstones", tier: "primary" }],
+        },
+      ],
+      warnings: [],
+    });
+
+    const result = await handleInventoryScanWithItems(
+      { imageDataUrl: jpegDataUrl },
+      "user_personal_vocabulary",
+      personalItems,
+    );
+
+    expect(result.status).toBe(200);
+    const payload = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(payload.messages[0].content).toContain("polishes gemstones");
+    expect(payload.messages[0].content).not.toContain("toasts bread");
   });
 
   it("returns a successful empty review draft when nothing is recognized", async () => {

@@ -16,8 +16,9 @@ user's Buy anyway path.
 The implementation follows [PDD.md](./PDD.md), the product and system source of
 truth. Its requirements take precedence over this README and code comments;
 normative values may only change with human sign-off and a PDD decision-log
-entry. The app uses React, TypeScript, D3, SVG, versioned JSON data, and two
-Vercel-compatible backend endpoints. There is no database or persistence.
+entry. The app uses React, TypeScript, D3, SVG, versioned guest JSON data,
+Clerk-authenticated Vercel Functions, and Neon Postgres persistence for each
+signed-in account.
 
 Visual implementation follows [DESIGN.md](./DESIGN.md), which applies the
 Atlassian Design System (tokens via `@atlaskit/tokens`, light theme) to
@@ -49,8 +50,9 @@ Evaluating any other product requires the live API configuration below.
   approval state.
 
 These decompositions live in `src/data/demoCache.json` and are always rescored
-against `src/data/inventory.json`, so cached and live evaluations use the same
-coverage math.
+against the active inventory: bundled JSON for a guest, or the loaded Neon
+inventory for a signed-in account. Cached and live evaluations therefore use
+the same coverage math without copying demo items into a new account.
 
 ## Main interactions
 
@@ -95,7 +97,7 @@ Failures use `{ "error": string, "hint": string }`; the hint always gives the
 user a next step. Non-`POST` requests receive the same shaped contract with a
 405 status.
 
-Both live endpoints require a verified Clerk session in production. Configure
+All personal and live endpoints require a verified Clerk session in production. Configure
 the browser and server with matching Clerk instance keys and exact allowed
 origins (no trailing slash):
 
@@ -104,6 +106,7 @@ VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
 CLERK_PUBLISHABLE_KEY=pk_test_...
 CLERK_SECRET_KEY=sk_test_...
 CLERK_AUTHORIZED_PARTIES=https://your-app.example,http://localhost:5173
+CLERK_WEBHOOK_SIGNING_SECRET=whsec_...
 ```
 
 Set these server-side environment variables for arbitrary product evaluation
@@ -129,9 +132,28 @@ exposed to the client.
 
 `POST /api/inventory/scan` accepts a JPEG, PNG, or WebP base64 data URL and
 returns a provisional list of visible owned items for review. It does not
-write to the inventory or any database. See
+write until reviewed candidates are explicitly confirmed through the personal
+inventory API. See
 [docs/inventory-scan.md](./docs/inventory-scan.md) for its request, response,
 privacy, size, and operational contracts.
+
+### Personal inventory database
+
+The Vercel Marketplace Neon resource provides server-only `DATABASE_URL` and
+`DATABASE_URL_UNPOOLED` variables. Drizzle migrations create the Clerk-owned
+`inventory_items` table, and `vercel.json` runs migrations before each build.
+The API contract is:
+
+- `GET /api/inventory/items`
+- `POST /api/inventory/items`
+- `PATCH /api/inventory/items/:id`
+- `DELETE /api/inventory/items/:id`
+
+Every query includes the verified Clerk user ID. Signed-in accounts start with
+an empty inventory, while guests continue using the 36 bundled items. Setup,
+migrations, isolated database tests, preview branching, webhook retention, and
+rollback procedures are documented in
+[docs/neon-inventory.md](./docs/neon-inventory.md).
 
 ### Pinecone vector store
 
@@ -157,9 +179,10 @@ npm run pinecone:setup
 in-process, and any Pinecone outage falls back to the in-process path, so live
 evaluation never depends on the vector store being reachable.
 
-For Vercel, deploy the repository as a Vite project, use `npm run build`, set
-the output directory to `dist`, and configure the environment variables above.
-`api/evaluate.ts` and `api/inventory/scan.ts` deploy as serverless functions.
+For Vercel, deploy the repository as a Vite project, keep the committed build
+command (`npm run db:migrate && npm run build`), set the output directory to
+`dist`, and configure the environment variables above. The files under `api/`
+deploy as serverless functions.
 The bundled demo arcs continue to work if the live service is unavailable.
 Vite's development middleware only emulates `/api/evaluate`; use a Vercel
 preview or deployment to exercise the Clerk-protected photo endpoint end to
@@ -177,9 +200,10 @@ end.
 - `src/state/` — evaluation client, reducer, and four-beat scheduler.
 - `src/lib/` — scoring, vocabulary, routing, copy, and graph derivation.
 - `src/data/` — versioned inventory and decomposition-only demo cache.
-- `api/evaluate.ts`, `api/inventory/scan.ts`, and `api/_lib/` — authenticated
-  serverless APIs, safe image preprocessing, and shared structured
-  decomposition/canonicalization.
+- `api/evaluate.ts`, `api/inventory/`, `api/webhooks/`, and `api/_lib/` —
+  authenticated serverless APIs, persistent inventory, retention cleanup, safe
+  image preprocessing, and shared structured decomposition/canonicalization.
+- `drizzle/` and `drizzle.config.ts` — repeatable Neon schema migrations.
 
 ## Verify
 

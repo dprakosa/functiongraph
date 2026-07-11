@@ -431,10 +431,14 @@ describe("FunctionGraph frontend contract", () => {
           JSON.stringify({
             items: [
               {
-                id: "personal-kettle",
+                id: "f65cf02e-134f-4bb7-bec8-1c43767315c3",
                 name: "Personal kettle",
                 domain: "kitchen",
+                quantity: 1,
                 capabilities: [{ name: "boils water", tier: "primary" }],
+                source: "photo",
+                createdAt: "2026-07-11T00:00:00.000Z",
+                updatedAt: "2026-07-11T00:00:00.000Z",
               },
             ],
           }),

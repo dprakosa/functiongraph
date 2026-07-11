@@ -1,10 +1,15 @@
 # Clerk setup
 
-Clerk protects only the production live-evaluation request. It does not gate the application shell or the three bundled demo arcs.
+Clerk protects live evaluation, photo scanning, and personal inventory APIs. It
+does not gate the application shell or the three bundled guest demo arcs.
 
 The browser integration uses `@clerk/react`; the Vercel function uses `@clerk/backend`. When a client publishable key is present, [`src/main.tsx`](../src/main.tsx) mounts the app inside `ClerkProvider` and the auth UI exposes modal sign-in/sign-up or account/sign-out controls as appropriate, without adding an application route. With no client key, the app deliberately starts in guest-demo mode instead of failing to render. The app also stays mounted while Clerk loads and falls back to the guest-demo status if Clerk cannot load.
 
-Production `POST /api/evaluate` requests pass through [`api/evaluate.ts`](../api/evaluate.ts) and the Clerk verifier in [`api/_lib/auth.ts`](../api/_lib/auth.ts) before reaching the existing evaluator. Non-`POST` requests still return `405` before authentication. A verified request reaches the existing cache → memo → live resolution unchanged.
+Production API requests pass through the Clerk verifier in
+[`api/_lib/auth.ts`](../api/_lib/auth.ts) before accessing a personal inventory
+or a live provider. Non-supported methods still return `405` before
+authentication. A verified evaluation loads the same Clerk-owned inventory as
+the graph before following the existing cache → memo → live resolution.
 
 ## Environment contract
 
@@ -14,6 +19,7 @@ Production `POST /api/evaluate` requests pass through [`api/evaluate.ts`](../api
 | `CLERK_PUBLISHABLE_KEY` | Server-only | Identifies the same Clerk instance to the Vercel authentication wrapper. Keep it in server/platform configuration even though a Clerk publishable key is not itself a secret. |
 | `CLERK_SECRET_KEY` | Server-only, secret | Lets `@clerk/backend` authenticate requests. Never expose it in client code, logs, screenshots, or a committed env file. |
 | `CLERK_AUTHORIZED_PARTIES` | Server-only | Comma-separated allowlist of exact browser origins accepted from the session token's authorized-party (`azp`) claim. |
+| `CLERK_WEBHOOK_SIGNING_SECRET` | Server-only, secret | Verifies Clerk `user.deleted` events before deleting that user's retained inventory rows. |
 
 The client and server publishable keys and the secret key must belong to the same Clerk instance. Do not combine development and production keys.
 
