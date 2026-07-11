@@ -24,26 +24,40 @@ function assertNamingLaw(name: string, where: string) {
 }
 
 describe("seed inventory (§13)", () => {
-  it("has 19 items: 13 kitchen + 6 electronics", () => {
-    expect(inventory.items).toHaveLength(19);
+  it("has 36 items across four active rooms", () => {
+    expect(inventory.items).toHaveLength(36);
+    expect(inventory.unscannedRooms).toEqual([]);
     expect(
-      inventory.items.filter((item) => item.domain === "kitchen"),
-    ).toHaveLength(13);
-    expect(
-      inventory.items.filter((item) => item.domain === "electronics"),
-    ).toHaveLength(6);
+      Object.fromEntries(
+        ["kitchen", "electronics", "garage", "bathroom"].map((domain) => [
+          domain,
+          inventory.items.filter((item) => item.domain === domain).length,
+        ]),
+      ),
+    ).toEqual({ kitchen: 13, electronics: 8, garage: 8, bathroom: 7 });
   });
 
   it("is versioned JSON (DM-7)", () => {
-    expect(inventory.version).toBe(1);
+    expect(inventory.version).toBe(2);
     expect(demoCache.version).toBe(1);
   });
 
-  it("plants the weak links and the degree-6 hub", () => {
+  it("plants the weak links and the expanded usb-c hotspot", () => {
     const vocabulary = deriveVocabulary(inventory.items);
     expect(vocabulary.get("boils water")!.degree).toBeGreaterThanOrEqual(2);
     expect(vocabulary.get("keeps food warm")!.degree).toBeGreaterThanOrEqual(2);
-    expect(vocabulary.get("charges usb-c devices")!.degree).toBe(6);
+    expect(vocabulary.get("charges usb-c devices")!.degree).toBe(7);
+  });
+
+  it("has unique identities and useful capability sets", () => {
+    expect(new Set(inventory.items.map((item) => item.id)).size).toBe(36);
+    expect(new Set(inventory.items.map((item) => item.name)).size).toBe(36);
+    inventory.items.forEach((item) => {
+      expect(item.capabilities.some((capability) => capability.tier === "primary")).toBe(true);
+      expect(new Set(item.capabilities.map((capability) => capability.name)).size).toBe(
+        item.capabilities.length,
+      );
+    });
   });
 
   it("obeys the capability naming law (DM-3)", () => {

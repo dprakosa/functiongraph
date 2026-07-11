@@ -60,7 +60,12 @@ export interface EvaluateError {
   hint: string;
 }
 
-export type InventoryScanDomain = "kitchen" | "electronics" | "unclassified";
+export type InventoryScanDomain =
+  | "kitchen"
+  | "electronics"
+  | "garage"
+  | "bathroom"
+  | "unclassified";
 export type InventoryScanConfidence = "high" | "medium" | "low";
 
 /** API-7: provisional, review-required candidate produced from one photo. */

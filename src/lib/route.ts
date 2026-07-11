@@ -1,9 +1,9 @@
-import { deriveDomains } from "./graphDerive";
+import { deriveRooms } from "./graphDerive";
 import { deriveVocabulary } from "./vocabulary";
 import type { Item, Verdict } from "./types";
 
 export interface RouteResult {
-  /** Computed domain label to dive into, or null → no dive, approval state (SM-5). */
+  /** Computed room label to dive into, or null → no dive, approval state (SM-5). */
   domain: string | null;
   /** Covered rows attributable to that domain — the toast's "X of Y matches". */
   matchesInRoom: number;
@@ -11,17 +11,17 @@ export interface RouteResult {
 }
 
 /**
- * SM-5 routing. Threshold rule (derived, see plan): each domain scores the sum
+ * SM-5 routing. Threshold rule (derived, see plan): each room scores the sum
  * of covered-row weights it can cover with at least one owner; dive the
  * strongest domain iff at least one capability is covered at all. Zero covered
  * capabilities → no dive, ghost stays at home level, approval state (PR-3c).
  */
 export function routeVerdict(verdict: Verdict, items: Item[]): RouteResult {
-  const domains = deriveDomains(items);
+  const rooms = deriveRooms(items);
   const vocabulary = deriveVocabulary(items);
   const domainByItemId = new Map<string, string>();
-  domains.forEach((domain) => {
-    domain.itemIds.forEach((itemId) => domainByItemId.set(itemId, domain.label));
+  rooms.forEach((room) => {
+    room.itemIds.forEach((itemId) => domainByItemId.set(itemId, room.label));
   });
 
   const scores = new Map<string, { weight: number; matches: number }>();

@@ -1,6 +1,6 @@
 import {
-  deriveDomains,
-  deriveHubs,
+  deriveRoomHubs,
+  deriveRooms,
   ghostEdgeId,
   inventoryEdgeId,
 } from "../lib/graphDerive";
@@ -108,9 +108,14 @@ export function buildGraph({
   expandedItemId,
 }: BuildArgs): GraphData {
   const vocabulary = deriveVocabulary(items);
-  const hubs = deriveHubs(items);
-  const hubBySlug = new Map(hubs.map((hub) => [hub.slug, hub]));
-  const domains = deriveDomains(items);
+  const domains = deriveRooms(items);
+  const roomHubs = new Map(
+    domains.map((domain) => [
+      domain.label,
+      deriveRoomHubs(items, domain.label),
+    ]),
+  );
+  const allHubs = [...roomHubs.values()].flat();
   const domainByItemId = new Map<string, string>();
   domains.forEach((domain) =>
     domain.itemIds.forEach((itemId) => domainByItemId.set(itemId, domain.label)),
@@ -125,10 +130,8 @@ export function buildGraph({
 
   if (view.level === "home") {
     domains.forEach((domain) => {
-      const hotspotCount = hubs.filter(
-        (hub) =>
-          hub.hot &&
-          hub.owners.some((owner) => domainByItemId.get(owner.itemId) === domain.label),
+      const hotspotCount = (roomHubs.get(domain.label) ?? []).filter(
+        (hub) => hub.hot,
       ).length;
       nodes.push({
         id: roomId(domain.label),
@@ -202,14 +205,13 @@ export function buildGraph({
   const roomItems = items.filter(
     (item) => domainByItemId.get(item.id) === roomLabel,
   );
+  const roomVocabulary = deriveVocabulary(roomItems);
   const roomItemIds = new Set(roomItems.map((item) => item.id));
-  const roomHubs = hubs.filter((hub) =>
-    hub.owners.some((owner) => roomItemIds.has(owner.itemId)),
-  );
+  const visibleRoomHubs = roomHubs.get(roomLabel) ?? [];
 
   roomItems.forEach((item) => {
     const uniqueCount = item.capabilities.filter(
-      (capability) => (vocabulary.get(capability.name)?.degree ?? 0) === 1,
+      (capability) => (roomVocabulary.get(capability.name)?.degree ?? 0) === 1,
     ).length;
     nodes.push({
       id: item.id,
@@ -221,7 +223,7 @@ export function buildGraph({
     });
   });
 
-  roomHubs.forEach((hub) => {
+  visibleRoomHubs.forEach((hub) => {
     nodes.push({
       id: hubId(hub.slug),
       kind: "hub",
@@ -242,8 +244,8 @@ export function buildGraph({
   const expandedItem = roomItems.find((item) => item.id === expandedItemId);
   if (expandedItem) {
     expandedItem.capabilities.forEach((capability) => {
-      const entry = vocabulary.get(capability.name);
-      if ((entry?.degree ?? 0) !== 1) return;
+      const roomEntry = roomVocabulary.get(capability.name);
+      if ((roomEntry?.degree ?? 0) !== 1) return;
       const slug = capSlug(capability.name);
       nodes.push({
         id: miniId(slug),
@@ -274,12 +276,14 @@ export function buildGraph({
     result.verdict.rows.forEach((row) => {
       if (row.covered) {
         let targetId: string;
-        const promotedHub = hubBySlug.get(row.capSlug);
+        const promotedHub =
+          allHubs.find(
+            (hub) => hub.slug === row.capSlug && hub.domain === roomLabel,
+          ) ?? allHubs.find((hub) => hub.slug === row.capSlug);
         if (promotedHub) {
           targetId = hubId(row.capSlug);
           // Multi-room results may cite a coverer outside the routed room.
-          // Keep the globally promoted hub visible so its ghost edge has a
-          // real endpoint; never promote a capability that ALG-8 excluded.
+          // Keep a hub promoted in its owning room visible as evidence.
           if (!nodes.some((node) => node.id === targetId)) {
             const localOwner = promotedHub.owners.find((owner) =>
               roomItemIds.has(owner.itemId),
@@ -290,14 +294,12 @@ export function buildGraph({
               label: promotedHub.name,
               hot: promotedHub.hot,
               seedNear: localOwner?.itemId ?? GHOST_ID,
-              domain: localOwner
-                ? roomLabel
-                : domainByItemId.get(promotedHub.owners[0]?.itemId),
+              domain: promotedHub.domain,
             });
           }
         } else {
           // A covered capability below hub promotion materializes only as
-          // contextual mini evidence. This preserves ALG-8's top-12 cap while
+          // contextual mini evidence. This preserves ALG-8's per-room cap while
           // keeping the verdict row's ghost edge inspectable (PR-3b).
           const owner = vocabulary.get(row.capability)?.owners[0];
           targetId = miniId(row.capSlug);

@@ -169,11 +169,54 @@ describe("inventory photo detection", () => {
     });
   });
 
+  it("accepts garage and bathroom as active suggested domains", async () => {
+    installChatMock({
+      items: [
+        {
+          ...scanResult.items[0],
+          name: "Cordless drill",
+          suggestedDomain: "garage",
+          capabilities: [{ name: "drives screws", tier: "primary" }],
+        },
+        {
+          ...scanResult.items[0],
+          name: "Hair dryer",
+          suggestedDomain: "bathroom",
+          capabilities: [{ name: "styles hair", tier: "primary" }],
+        },
+      ],
+      warnings: [],
+    });
+    const result = await handleInventoryScan(
+      { imageDataUrl: jpegDataUrl },
+      "user_four_rooms",
+    );
+    expect(result.status).toBe(200);
+    if ("items" in result.body) {
+      expect(result.body.items.map((item) => item.suggestedDomain)).toEqual([
+        "garage",
+        "bathroom",
+      ]);
+    }
+  });
+
   it("fails the whole response when provider data violates the contract", async () => {
     installChatMock({ ...scanResult, items: [{ ...scanResult.items[0], confidence: "certain" }] });
     const result = await handleInventoryScan({ imageDataUrl: jpegDataUrl }, "user_bad_output");
     expect(result.status).toBe(503);
     expect(result.body).toEqual(expect.objectContaining({ hint: expect.any(String) }));
+  });
+
+  it("rejects suggested domains outside the four active rooms", async () => {
+    installChatMock({
+      ...scanResult,
+      items: [{ ...scanResult.items[0], suggestedDomain: "bedroom" }],
+    });
+    const result = await handleInventoryScan(
+      { imageDataUrl: jpegDataUrl },
+      "user_unknown_room",
+    );
+    expect(result.status).toBe(503);
   });
 
   it("maps a model refusal to a reviewable 422", async () => {

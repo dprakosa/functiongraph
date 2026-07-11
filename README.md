@@ -5,6 +5,10 @@ into capabilities, compares them with a structured inventory, and shows what is
 already covered and what is genuinely new in a live force-directed graph and
 verdict checklist.
 
+The bundled version-2 inventory contains 36 realistic items across Kitchen,
+Electronics, Garage, and Bathroom. Rooms organize navigation; shared
+capabilities and force physics form the functional clusters inside them.
+
 Matching happens at the capability level, not by product name. The result is
 decision support—coverage plus the genuinely-new delta—and never removes the
 user's Buy anyway path.

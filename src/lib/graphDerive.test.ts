@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import inventoryFile from "../data/inventory.json";
 import {
-  deriveDomains,
-  deriveHubs,
+  deriveRoomHubs,
+  deriveRooms,
   ghostEdgeId,
-  HUB_CAP,
   inventoryEdgeId,
+  ROOM_HUB_CAP,
   uniqueCapabilities,
 } from "./graphDerive";
 import type { InventoryFile } from "./types";
@@ -14,15 +14,22 @@ const inventory = inventoryFile as InventoryFile;
 const items = inventory.items;
 
 describe("hub promotion (ALG-8)", () => {
-  const hubs = deriveHubs(items);
-
-  it("promotes exactly the shared (degree ≥ 2) capabilities within the cap", () => {
-    expect(hubs.length).toBeLessThanOrEqual(HUB_CAP);
-    hubs.forEach((hub) => expect(hub.degree).toBeGreaterThanOrEqual(2));
+  it("promotes at most eight locally shared capabilities in every room", () => {
+    deriveRooms(items).forEach((room) => {
+      const hubs = deriveRoomHubs(items, room.label);
+      expect(hubs.length).toBeLessThanOrEqual(ROOM_HUB_CAP);
+      hubs.forEach((hub) => {
+        expect(hub.domain).toBe(room.label);
+        expect(hub.degree).toBeGreaterThanOrEqual(2);
+      });
+    });
   });
 
   it("includes every hub the demo arcs rely on", () => {
-    const names = hubs.map((hub) => hub.name);
+    const names = [
+      ...deriveRoomHubs(items, "kitchen"),
+      ...deriveRoomHubs(items, "electronics"),
+    ].map((hub) => hub.name);
     // Ghost edges must land on visible hubs (PR-3b): all four covered oven
     // capabilities and all three cable capabilities must be promoted.
     for (const required of [
@@ -38,32 +45,40 @@ describe("hub promotion (ALG-8)", () => {
     }
   });
 
-  it("marks degree ≥ 4 hubs hot, including the planted degree-6 usb-c hub", () => {
+  it("marks local degree ≥ 4 hubs hot, including the degree-7 usb-c hub", () => {
+    const hubs = deriveRoomHubs(items, "electronics");
     const byName = new Map(hubs.map((hub) => [hub.name, hub]));
-    expect(byName.get("charges usb-c devices")?.degree).toBe(6);
+    expect(byName.get("charges usb-c devices")?.degree).toBe(7);
     expect(byName.get("charges usb-c devices")?.hot).toBe(true);
-    expect(byName.get("bakes food")?.hot).toBe(false);
     hubs.forEach((hub) => expect(hub.hot).toBe(hub.degree >= 4));
   });
 
-  it("keeps the planted weak links promoted", () => {
-    const names = hubs.map((hub) => hub.name);
-    expect(names).toContain("boils water");
-    expect(names).toContain("keeps food warm");
+  it("produces sensible shared-function clusters in garage and bathroom", () => {
+    expect(deriveRoomHubs(items, "garage").map((hub) => hub.name)).toEqual([
+      "blows dust from surfaces",
+      "collects sawdust",
+      "drives screws",
+      "inflates vehicle tires",
+    ]);
+    expect(deriveRoomHubs(items, "bathroom").map((hub) => hub.name)).toEqual([
+      "massages gums",
+      "styles hair",
+      "trims body hair",
+      "trims facial hair",
+    ]);
   });
 });
 
-describe("domain emergence (ALG-9)", () => {
-  it("computes kitchen and electronics as connected components — never from labels", () => {
-    const domains = deriveDomains(items).sort((a, b) =>
-      a.label.localeCompare(b.label),
-    );
-    expect(domains.map((domain) => domain.label)).toEqual([
-      "electronics",
+describe("room navigation and emergent clusters (ALG-9)", () => {
+  it("groups rooms in deterministic inventory order", () => {
+    const rooms = deriveRooms(items);
+    expect(rooms.map((room) => room.label)).toEqual([
       "kitchen",
+      "electronics",
+      "garage",
+      "bathroom",
     ]);
-    expect(domains[0].itemIds).toHaveLength(6);
-    expect(domains[1].itemIds).toHaveLength(13);
+    expect(rooms.map((room) => room.itemIds.length)).toEqual([13, 8, 8, 7]);
   });
 });
 

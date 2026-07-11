@@ -1,6 +1,6 @@
 # FunctionGraph — Product & System Specification
 
-**Status:** v1.1 · source of truth
+**Status:** v1.2 · source of truth
 **Precedence:** Where this document conflicts with README.md, CLAUDE.md,
 visualization-design.md, code comments, or chat history, **this document
 wins**. CLAUDE.md is the operational companion; visualization-design.md is
@@ -32,8 +32,9 @@ their own devices.
   duplicate detection ("you bought this before") is explicitly not the
   product.
 - **PR-3** The three proofs the experience MUST deliver:
-  (a) *structure is emergent* — clusters and domain groupings arise from
-  shared capabilities via physics, never hardcoded;
+  (a) *functional structure is emergent* — rooms are curated navigation,
+  while clusters inside them arise from shared capabilities via physics and
+  never from hardcoded positions;
   (b) *every claim is inspectable* — each verdict row maps 1:1 to a visible
   edge;
   (c) *the tool can say yes* — a genuinely-new product receives a designed
@@ -57,14 +58,16 @@ MUST NOT substitute synonyms.
 | new | a capability of the ghost that nothing owned provides |
 | considering | the ghost's status label |
 | hotspot | a high-degree hub (redundancy concentration) |
-| domain / room | an emergent group of items (kitchen, electronics, …) |
+| room | a curated navigation group of owned items (kitchen, electronics, garage, bathroom) |
+| functional cluster | an emergent group connected by shared capabilities inside a room |
 | verdict | coverage score + row-by-row checklist + delta economics |
 
 ---
 
 ## 3. Data model
 
-- **DM-1** `Item { id, name, domain, capabilities: Capability[] }`
+- **DM-1** `Item { id, name, domain, capabilities: Capability[] }`, where
+  `domain` stores the item's curated room label.
 - **DM-2** `Capability { name, tier: 'primary' | 'secondary' }`
 - **DM-3 (naming law)** Capability names MUST be lowercase, present-tense
   **verb + object** phrases with no brand names, model numbers, or marketing
@@ -82,7 +85,8 @@ MUST NOT substitute synonyms.
   `{ id, name, quantity|null, suggestedDomain, confidence, evidence,
   capabilities }`. `confidence` is a review priority, not a calibrated
   probability. Scan responses MUST carry `needsReview: true` and MUST NOT
-  mutate DM-7 storage.
+  mutate DM-7 storage. `suggestedDomain` is `kitchen`, `electronics`,
+  `garage`, `bathroom`, or `unclassified`.
 
 ---
 
@@ -117,13 +121,16 @@ MUST NOT substitute synonyms.
   |newCapabilities|)` when price is known and new capabilities exist;
   otherwise null. Zero new capabilities with a known price yields the copy
   in CNT-4.
-- **ALG-8 (hub promotion)** A capability is a visible hub iff `degree ≥ 2`,
-  capped at the top **12** by degree. Hubs with `degree ≥ 4` receive "hot"
-  emphasis. Degree-1 capabilities are hidden until their item is expanded.
-- **ALG-9 (domain emergence)** Domains are connected components of the
-  item–capability graph (specificity weighting keeps generic capabilities
-  from falsely fusing them). Domain labels MAY be curated; membership MUST
-  be computed.
+- **ALG-8 (hub promotion)** Within each room, capability degree is recomputed
+  from that room's items. A capability is a visible hub iff local `degree ≥ 2`,
+  capped at the top **8 per room** by degree, then name. Hubs with local
+  `degree ≥ 4` receive "hot" emphasis. Degree-1 capabilities are hidden until
+  their item is expanded; other non-promoted capabilities materialize when
+  needed as verdict evidence.
+- **ALG-9 (rooms + cluster emergence)** Room membership comes from DM-1 and
+  room order follows first appearance in inventory data. Within a room,
+  connected functional clusters emerge exclusively from shared-capability
+  edges and force physics; clusters and node positions MUST NOT be hardcoded.
 - **ALG-10 (verdicts are always live)** Cached entries store decompositions
   only. `scoreProduct` MUST run on every evaluation so cached and live
   products flow through identical math against the current inventory.
@@ -311,9 +318,9 @@ the ceiling — learnable in one viewing.
   one-tap examples covering the three arcs (DEM-1) so no judge faces an
   empty input. All arcs completable one-handed on a phone; below ~720 px
   the panel stacks under the graph.
-- **NFR-3 (performance)** Graph scale ≈ 19 items + ≤ 12 hubs (+ ghost +
-  minis); simulation settles ≤ ~2 s from load and fully stops at rest;
-  beats within SM-3 budgets.
+- **NFR-3 (performance)** Graph scale ≈ 36 items across four rooms, with each
+  room view bounded by its items + ≤ 8 hubs (+ ghost + minis); simulation
+  settles ≤ ~2 s from load and fully stops at rest; beats within SM-3 budgets.
 - **NFR-4 (accessibility)** Reduced-motion path (SM-9); visible keyboard
   focus; touch targets are real elements with generous padding.
 - **NFR-5 (operational)** Model, vision, and embedding snapshots pinned; renderer
@@ -353,7 +360,7 @@ the ceiling — learnable in one viewing.
 
 - **SCP-1 (out of scope — roadmap/slides only)** browser extension · camera
   UI · scan confirmation/persistence · persistent override learning · capability instance counts ·
-  categories beyond kitchen + electronics · databases · split-view routing.
+  categories beyond kitchen + electronics + garage + bathroom · databases · split-view routing.
   Agents MUST NOT implement these without explicit human sign-off recorded in
   the decision log.
 - **SCP-2 (degradation ladder, cut in order)** (1) home level + Beat 2 →
@@ -372,13 +379,14 @@ the ceiling — learnable in one viewing.
 React Flow (@xyflow/react v12) + d3-force · dark node-editor theme ·
 `gpt-4.1-mini` (pinned snapshot) with structured outputs ·
 `text-embedding-3-small` · Sharp image normalization · Vercel-shaped repo with
-two serverless endpoints · JSON seed data (19 items: 13 kitchen + 6 electronics, including
+two serverless endpoints · JSON seed data (36 items: 13 kitchen, 8 electronics,
+8 garage, and 7 bathroom, including
 the planted `boils water` and `keeps food warm` weak links and the
-degree-6 `charges usb-c devices` hub). An inherited codebase MAY substitute
+degree-7 `charges usb-c devices` hub). An inherited codebase MAY substitute
 equivalents that satisfy §§4–10; the numbers in §§4–6 remain normative.
 
 **Tuning knobs (defaults):** snap threshold 0.83 · specificity
-1/log2(2+deg) · tier weights 1.0/0.4 · hub cap 12, hot ≥ 4 · beat timings
+1/log2(2+deg) · tier weights 1.0/0.4 · hub cap 8 per room, local hot ≥ 4 · beat timings
 per SM-3 · caps per product 3–8 · input 3–1500 chars.
 
 ---
@@ -392,7 +400,7 @@ per SM-3 · caps per product 3–8 · input 3–1500 chars.
 | Hubs (shared ≥ 2) instead of all capabilities or none | degree-1 capabilities add zero redundancy info; shared hubs are simultaneously labels, evidence, and the clustering mechanism |
 | Asymmetric weighted coverage | "how much of what I'd buy do I already own" is the decision-relevant direction |
 | Specificity (IDF-style) weighting | prevents generic capabilities from fusing domains and inflating scores |
-| Domains emergent, labels optional | "the graph discovered kitchen" is a truth claim the viz must keep true |
+| Rooms curated, functional clusters emergent | realistic rooms contain unrelated functions; curated navigation avoids artificial capabilities while shared edges and physics still reveal functional structure |
 | Verdicts always computed live | cached and live products must flow through identical math |
 | Beats as state changes + physics | one mechanism, no tween library, theater stays truthful |
 | Route pause (600 ms toast) | auto-navigation without warning reads as losing control |
@@ -401,15 +409,16 @@ per SM-3 · caps per product 3–8 · input 3–1500 chars.
 | Backend-only photo inventory draft | user sign-off promoted photo ingestion from roadmap scope; one ephemeral vision pass finds visible owned items without adding a database or changing the graph |
 | Photo candidates require review | visual identification and approximate counts are uncertain; confirmation and persistence remain future work |
 | Scope changes use sign-off + decision log | schedule and project-cost estimates are not normative product requirements; product price/delta economics remain normative in ALG-7 and DEM-1 |
+| Four-room, 36-item seed with per-room hubs | human sign-off selected a realistic balanced home; a local top-8 hub budget keeps every room informative without letting the largest room consume global visibility |
 
 ---
 
 ## 15. Conformance checklist (definition of done)
 
-- [ ] Zero hardcoded node positions; clusters and domains emerge from data (PR-3a, ALG-9)
+- [ ] Zero hardcoded node positions; rooms come from inventory and functional clusters emerge from shared capabilities (PR-3a, ALG-9)
 - [ ] Capability naming law holds across prompt, inventory, and demo cache (DM-3)
 - [ ] Coverage math reproduces DEM-1: oven 4/5 · 75 % weighted · $129/new; cable 100 %; drone 0 % — asserted by an automated test
-- [ ] Hub promotion follows ALG-8 (shared ≥ 2, top 12, hot ≥ 4)
+- [ ] Hub promotion follows ALG-8 in every room (local shared ≥ 2, top 8, hot ≥ 4)
 - [ ] Every checklist row pulses exactly one edge; edge id contract intact (VIS-5, INT-6)
 - [ ] All four beats run in order within SM-3 budgets; route pause present; no-match path skips the dive and renders approval
 - [ ] Cosmetic changes never reheat physics; structural changes glide from current positions (SM-8)

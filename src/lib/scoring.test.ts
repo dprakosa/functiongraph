@@ -115,3 +115,31 @@ describe("ALG-7 edge cases", () => {
     expect(verdict.pricePerNewCapability).toBeNull();
   });
 });
+
+describe("expanded-room routing", () => {
+  it.each([
+    [
+      "garage",
+      [
+        { name: "drives screws", tier: "primary" as const },
+        { name: "collects sawdust", tier: "secondary" as const },
+        { name: "inflates vehicle tires", tier: "secondary" as const },
+      ],
+    ],
+    [
+      "bathroom",
+      [
+        { name: "styles hair", tier: "primary" as const },
+        { name: "massages gums", tier: "secondary" as const },
+        { name: "trims facial hair", tier: "secondary" as const },
+      ],
+    ],
+  ])("routes shared %s capabilities into their active room", (domain, capabilities) => {
+    const verdict = scoreProduct({ price: null, capabilities }, items);
+    expect(routeVerdict(verdict, items)).toMatchObject({
+      domain,
+      matchesInRoom: 3,
+      totalCount: 3,
+    });
+  });
+});

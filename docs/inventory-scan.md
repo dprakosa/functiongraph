@@ -3,6 +3,8 @@
 `POST /api/inventory/scan` turns one household photo into an ephemeral draft
 inventory. The endpoint is backend-only: it does not provide a camera UI,
 confirm candidates, update `inventory.json`, or use a database/vector store.
+Candidates can be assigned to any of the four active rooms—Kitchen,
+Electronics, Garage, or Bathroom—or left unclassified.
 
 ## Request
 
@@ -27,7 +29,12 @@ megapixels are rejected. `roomHint` is optional and limited to 80 characters.
     id: string; // candidate-1, candidate-2, ...
     name: string;
     quantity: number | null; // approximate when present
-    suggestedDomain: "kitchen" | "electronics" | "unclassified";
+    suggestedDomain:
+      | "kitchen"
+      | "electronics"
+      | "garage"
+      | "bathroom"
+      | "unclassified";
     confidence: "high" | "medium" | "low"; // review priority only
     evidence: string;
     capabilities: Array<{

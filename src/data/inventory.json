@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "unscannedRooms": ["garage", "bathroom"],
+  "version": 2,
+  "unscannedRooms": [],
   "items": [
     {
       "id": "air-fryer",
@@ -176,6 +176,166 @@
         { "name": "adds usb ports", "tier": "primary" },
         { "name": "charges usb-c devices", "tier": "secondary" },
         { "name": "transfers data between devices", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "portable-ssd",
+      "name": "Portable SSD",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "stores digital files", "tier": "primary" },
+        { "name": "transfers data between devices", "tier": "primary" },
+        { "name": "backs up digital files", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "usb-c-monitor",
+      "name": "USB-C monitor",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "displays computer video", "tier": "primary" },
+        { "name": "charges usb-c devices", "tier": "secondary" },
+        { "name": "adds usb ports", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "cordless-drill",
+      "name": "Cordless drill",
+      "domain": "garage",
+      "capabilities": [
+        { "name": "drills holes", "tier": "primary" },
+        { "name": "drives screws", "tier": "primary" }
+      ]
+    },
+    {
+      "id": "impact-driver",
+      "name": "Impact driver",
+      "domain": "garage",
+      "capabilities": [
+        { "name": "drives screws", "tier": "primary" },
+        { "name": "tightens fasteners", "tier": "primary" },
+        { "name": "loosens fasteners", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "orbital-sander",
+      "name": "Orbital sander",
+      "domain": "garage",
+      "capabilities": [
+        { "name": "sands wood", "tier": "primary" },
+        { "name": "smooths painted surfaces", "tier": "secondary" },
+        { "name": "collects sawdust", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "shop-vacuum",
+      "name": "Shop vacuum",
+      "domain": "garage",
+      "capabilities": [
+        { "name": "removes workshop debris", "tier": "primary" },
+        { "name": "collects sawdust", "tier": "primary" },
+        { "name": "vacuums liquid spills", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "air-compressor",
+      "name": "Air compressor",
+      "domain": "garage",
+      "capabilities": [
+        { "name": "powers pneumatic tools", "tier": "primary" },
+        { "name": "inflates vehicle tires", "tier": "secondary" },
+        { "name": "blows dust from surfaces", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "tire-inflator",
+      "name": "Tire inflator",
+      "domain": "garage",
+      "capabilities": [
+        { "name": "inflates vehicle tires", "tier": "primary" },
+        { "name": "measures tire pressure", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "lawn-mower",
+      "name": "Lawn mower",
+      "domain": "garage",
+      "capabilities": [
+        { "name": "cuts grass", "tier": "primary" },
+        { "name": "collects grass clippings", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "leaf-blower",
+      "name": "Leaf blower",
+      "domain": "garage",
+      "capabilities": [
+        { "name": "clears fallen leaves", "tier": "primary" },
+        { "name": "blows dust from surfaces", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "electric-toothbrush",
+      "name": "Electric toothbrush",
+      "domain": "bathroom",
+      "capabilities": [
+        { "name": "cleans teeth", "tier": "primary" },
+        { "name": "massages gums", "tier": "secondary" },
+        { "name": "times brushing sessions", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "water-flosser",
+      "name": "Water flosser",
+      "domain": "bathroom",
+      "capabilities": [
+        { "name": "cleans interdental spaces", "tier": "primary" },
+        { "name": "massages gums", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "hair-dryer",
+      "name": "Hair dryer",
+      "domain": "bathroom",
+      "capabilities": [
+        { "name": "dries hair", "tier": "primary" },
+        { "name": "styles hair", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "hair-straightener",
+      "name": "Hair straightener",
+      "domain": "bathroom",
+      "capabilities": [
+        { "name": "straightens hair", "tier": "primary" },
+        { "name": "styles hair", "tier": "primary" }
+      ]
+    },
+    {
+      "id": "beard-trimmer",
+      "name": "Beard trimmer",
+      "domain": "bathroom",
+      "capabilities": [
+        { "name": "trims facial hair", "tier": "primary" },
+        { "name": "trims body hair", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "electric-shaver",
+      "name": "Electric shaver",
+      "domain": "bathroom",
+      "capabilities": [
+        { "name": "removes facial hair", "tier": "primary" },
+        { "name": "trims facial hair", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "body-groomer",
+      "name": "Body groomer",
+      "domain": "bathroom",
+      "capabilities": [
+        { "name": "trims body hair", "tier": "primary" },
+        { "name": "removes body hair", "tier": "primary" }
       ]
     }
   ]

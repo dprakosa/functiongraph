@@ -276,7 +276,13 @@ const SCAN_SCHEMA = {
           quantity: { type: ["integer", "null"], minimum: 1 },
           suggestedDomain: {
             type: "string",
-            enum: ["kitchen", "electronics", "unclassified"],
+            enum: [
+              "kitchen",
+              "electronics",
+              "garage",
+              "bathroom",
+              "unclassified",
+            ],
           },
           confidence: { type: "string", enum: ["high", "medium", "low"] },
           evidence: { type: "string" },
@@ -339,7 +345,13 @@ function validateRawScan(value: unknown): RawScanResult {
   ) {
     throw new Error("invalid scan warnings");
   }
-  const domains = new Set(["kitchen", "electronics", "unclassified"]);
+  const domains = new Set([
+    "kitchen",
+    "electronics",
+    "garage",
+    "bathroom",
+    "unclassified",
+  ]);
   const confidences = new Set(["high", "medium", "low"]);
   const items = raw.items.map((value) => {
     if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid candidate");

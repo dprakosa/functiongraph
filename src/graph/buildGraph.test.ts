@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import inventoryFile from "../data/inventory.json";
-import { deriveHubs, ghostEdgeId } from "../lib/graphDerive";
+import { deriveRoomHubs, deriveRooms, ghostEdgeId } from "../lib/graphDerive";
 import { routeVerdict } from "../lib/route";
 import { scoreProduct } from "../lib/scoring";
 import type {
@@ -64,10 +64,55 @@ describe("room verdict evidence (PR-3b, VIS-5)", () => {
     expect(nodesById.has("hub:stores-backup-power")).toBe(false);
 
     const promotedHubIds = new Set(
-      deriveHubs(inventory.items).map((hub) => `hub:${hub.slug}`),
+      deriveRooms(inventory.items).flatMap((room) =>
+        deriveRoomHubs(inventory.items, room.label).map(
+          (hub) => `hub:${hub.slug}`,
+        ),
+      ),
     );
     graph.nodes
       .filter((node) => node.kind === "hub")
       .forEach((node) => expect(promotedHubIds.has(node.id)).toBe(true));
   });
+});
+
+describe("expanded four-room graph", () => {
+  it("shows four active rooms with their seeded item counts", () => {
+    const graph = buildGraph({
+      items: inventory.items,
+      unscannedRooms: inventory.unscannedRooms,
+      view: { level: "home" },
+      phase: "resting",
+      result: null,
+      route: null,
+      expandedItemId: null,
+    });
+    expect(graph.nodes.map(({ kind, label, sub }) => ({ kind, label, sub }))).toEqual([
+      { kind: "room", label: "kitchen", sub: "13 items" },
+      { kind: "room", label: "electronics", sub: "8 items" },
+      { kind: "room", label: "garage", sub: "8 items" },
+      { kind: "room", label: "bathroom", sub: "7 items" },
+    ]);
+  });
+
+  it.each(["kitchen", "electronics", "garage", "bathroom"])(
+    "keeps every %s room edge attached to a present node",
+    (domain) => {
+      const graph = buildGraph({
+        items: inventory.items,
+        unscannedRooms: inventory.unscannedRooms,
+        view: { level: "room", domain },
+        phase: "resting",
+        result: null,
+        route: null,
+        expandedItemId: null,
+      });
+      const nodeIds = new Set(graph.nodes.map((node) => node.id));
+      expect(graph.nodes.filter((node) => node.kind === "hub").length).toBeLessThanOrEqual(8);
+      graph.edges.forEach((edge) => {
+        expect(nodeIds.has(String(edge.source))).toBe(true);
+        expect(nodeIds.has(String(edge.target))).toBe(true);
+      });
+    },
+  );
 });
