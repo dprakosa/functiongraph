@@ -1,0 +1,182 @@
+{
+  "version": 1,
+  "unscannedRooms": ["garage", "bathroom"],
+  "items": [
+    {
+      "id": "air-fryer",
+      "name": "Air fryer",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "crisps food with hot air", "tier": "primary" },
+        { "name": "bakes food", "tier": "secondary" },
+        { "name": "reheats leftovers", "tier": "secondary" },
+        { "name": "toasts bread", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "microwave",
+      "name": "Microwave",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "reheats leftovers", "tier": "primary" },
+        { "name": "defrosts frozen food", "tier": "primary" },
+        { "name": "keeps food warm", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "toaster",
+      "name": "Toaster",
+      "domain": "kitchen",
+      "capabilities": [{ "name": "toasts bread", "tier": "primary" }]
+    },
+    {
+      "id": "sandwich-press",
+      "name": "Sandwich press",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "grills sandwiches", "tier": "primary" },
+        { "name": "toasts bread", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "electric-kettle",
+      "name": "Electric kettle",
+      "domain": "kitchen",
+      "capabilities": [{ "name": "boils water", "tier": "primary" }]
+    },
+    {
+      "id": "rice-cooker",
+      "name": "Rice cooker",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "cooks rice", "tier": "primary" },
+        { "name": "keeps food warm", "tier": "secondary" },
+        { "name": "boils water", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "slow-cooker",
+      "name": "Slow cooker",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "simmers stews", "tier": "primary" },
+        { "name": "keeps food warm", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "pressure-cooker",
+      "name": "Pressure cooker",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "cooks food under pressure", "tier": "primary" },
+        { "name": "cooks rice", "tier": "secondary" },
+        { "name": "steams vegetables", "tier": "secondary" },
+        { "name": "keeps food warm", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "blender",
+      "name": "Blender",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "blends smoothies", "tier": "primary" },
+        { "name": "crushes ice", "tier": "secondary" },
+        { "name": "purees soups", "tier": "secondary" },
+        { "name": "grinds coffee beans", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "food-processor",
+      "name": "Food processor",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "chops vegetables", "tier": "primary" },
+        { "name": "kneads dough", "tier": "secondary" },
+        { "name": "purees soups", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "stand-mixer",
+      "name": "Stand mixer",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "kneads dough", "tier": "primary" },
+        { "name": "whips cream", "tier": "primary" }
+      ]
+    },
+    {
+      "id": "coffee-maker",
+      "name": "Coffee maker",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "brews coffee", "tier": "primary" },
+        { "name": "boils water", "tier": "secondary" },
+        { "name": "grinds coffee beans", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "toaster-oven",
+      "name": "Toaster oven",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "bakes food", "tier": "primary" },
+        { "name": "toasts bread", "tier": "secondary" },
+        { "name": "reheats leftovers", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "braided-usb-c-cable",
+      "name": "Braided USB-C cable",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "charges usb-c devices", "tier": "primary" },
+        { "name": "transfers data between devices", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "short-usb-c-cable",
+      "name": "Short USB-C cable",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "charges usb-c devices", "tier": "primary" },
+        { "name": "transfers data between devices", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "usb-c-video-cable",
+      "name": "USB-C video cable",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "charges usb-c devices", "tier": "primary" },
+        { "name": "transfers data between devices", "tier": "secondary" },
+        { "name": "connects external displays", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "wall-charger",
+      "name": "USB-C wall charger",
+      "domain": "electronics",
+      "capabilities": [{ "name": "charges usb-c devices", "tier": "primary" }]
+    },
+    {
+      "id": "power-bank",
+      "name": "Power bank",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "charges usb-c devices", "tier": "primary" },
+        { "name": "stores backup power", "tier": "primary" }
+      ]
+    },
+    {
+      "id": "laptop-dock",
+      "name": "Laptop dock",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "connects external displays", "tier": "primary" },
+        { "name": "adds usb ports", "tier": "primary" },
+        { "name": "charges usb-c devices", "tier": "secondary" },
+        { "name": "transfers data between devices", "tier": "secondary" }
+      ]
+    }
+  ]
+}

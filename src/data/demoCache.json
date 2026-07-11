@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "chips": [
+    "Convection countertop oven — $129",
+    "4th USB-C cable — $15",
+    "Mini camera drone — $89"
+  ],
+  "entries": {
+    "convection countertop oven": {
+      "name": "Convection countertop oven",
+      "price": 129,
+      "capabilities": [
+        { "name": "bakes food", "tier": "primary" },
+        { "name": "toasts bread", "tier": "primary" },
+        { "name": "reheats leftovers", "tier": "secondary" },
+        { "name": "keeps food warm", "tier": "secondary" },
+        { "name": "roasts large meals", "tier": "secondary" }
+      ],
+      "altSuggestion": "A secondhand roasting pan (about $20) adds large-meal roasting to the toaster oven you already own."
+    },
+    "4th usb c cable": {
+      "name": "4th USB-C cable",
+      "price": 15,
+      "capabilities": [
+        { "name": "charges usb-c devices", "tier": "primary" },
+        { "name": "transfers data between devices", "tier": "secondary" },
+        { "name": "connects external displays", "tier": "secondary" }
+      ],
+      "altSuggestion": null
+    },
+    "mini camera drone": {
+      "name": "Mini camera drone",
+      "price": 89,
+      "capabilities": [
+        { "name": "captures aerial photos", "tier": "primary" },
+        { "name": "records aerial video", "tier": "primary" },
+        { "name": "hovers in place", "tier": "secondary" },
+        { "name": "flies preset routes", "tier": "secondary" }
+      ],
+      "altSuggestion": null
+    }
+  }
+}
