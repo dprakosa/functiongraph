@@ -68,6 +68,21 @@ function assertNoStore(result, operation) {
   }
 }
 
+function scanFailureReason(body) {
+  const error = typeof body?.error === "string" ? body.error : "";
+  if (/authentication|sign in/i.test(error)) return "inventory-scan-auth";
+  if (/configured|requires an immutable|requires a pinned/i.test(error)) {
+    return "inventory-scan-config";
+  }
+  if (/invalid data/i.test(error)) return "inventory-scan-provider-data";
+  if (/temporarily unavailable/i.test(error)) return "inventory-scan-database";
+  if (/too many/i.test(error)) return "inventory-scan-rate-limit";
+  if (/busy/i.test(error)) return "inventory-scan-provider-busy";
+  if (/didn't respond/i.test(error)) return "inventory-scan-provider-unavailable";
+  if (/couldn't be used/i.test(error)) return "inventory-scan-refused";
+  return "inventory-scan-status";
+}
+
 async function wait(milliseconds) {
   await new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
@@ -221,7 +236,9 @@ async function main() {
     const tokenB = await sessionToken(sessionB.id);
 
     const scan = await scanWithOneTransientRetry(tokenA);
-    assertStatus(scan, 200, "inventory-scan");
+    if (scan.status !== 200) {
+      throw new SmokeFailure(scanFailureReason(scan.body), scan.status);
+    }
     assertNoStore(scan, "inventory-scan");
     const candidates = Array.isArray(scan.body?.items) ? scan.body.items : [];
     log("inventory.scan.candidates", { status: 200, count: candidates.length });

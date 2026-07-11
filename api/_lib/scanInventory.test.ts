@@ -157,6 +157,10 @@ describe("inventory photo detection", () => {
     expect(payload.safety_identifier).toMatch(/^[a-f0-9]{64}$/);
     expect(payload.safety_identifier).not.toContain("user_private_123");
     expect(payload.response_format.json_schema.strict).toBe(true);
+    expect(
+      payload.response_format.json_schema.schema.properties.items.items
+        .properties.capabilities.items.properties.name.pattern,
+    ).toBe("^[a-z][a-z-]*s(?: [a-z][a-z0-9-]*)+$");
     const image = payload.messages[1].content[1].image_url;
     expect(image.detail).toBe("high");
     expect(image.url).toMatch(/^data:image\/jpeg;base64,/);
@@ -256,6 +260,30 @@ describe("inventory photo detection", () => {
       "user_unknown_room",
     );
     expect(result.status).toBe(503);
+  });
+
+  it("rejects provider capabilities outside the canonical naming law", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    installChatMock({
+      ...scanResult,
+      items: [
+        {
+          ...scanResult.items[0],
+          capabilities: [{ name: "toast bread", tier: "primary" }],
+        },
+      ],
+    });
+
+    const result = await handleInventoryScan(
+      { imageDataUrl: jpegDataUrl },
+      "user_bad_capability",
+    );
+
+    expect(result.status).toBe(503);
+    expect(warn).toHaveBeenCalledWith(
+      "photo scan canonicalization rejected provider capabilities",
+    );
+    warn.mockRestore();
   });
 
   it("maps a model refusal to a reviewable 422", async () => {

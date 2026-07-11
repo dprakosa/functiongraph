@@ -270,7 +270,7 @@ const SCAN_SCHEMA = {
           "capabilities",
         ],
         properties: {
-          name: { type: "string" },
+          name: { type: "string", minLength: 1, maxLength: 100 },
           quantity: { type: ["integer", "null"], minimum: 1 },
           suggestedDomain: {
             type: "string",
@@ -283,7 +283,7 @@ const SCAN_SCHEMA = {
             ],
           },
           confidence: { type: "string", enum: ["high", "medium", "low"] },
-          evidence: { type: "string" },
+          evidence: { type: "string", minLength: 1, maxLength: 240 },
           capabilities: {
             type: "array",
             minItems: 1,
@@ -293,7 +293,12 @@ const SCAN_SCHEMA = {
               additionalProperties: false,
               required: ["name", "tier"],
               properties: {
-                name: { type: "string" },
+              name: {
+                type: "string",
+                minLength: 1,
+                maxLength: 100,
+                pattern: "^[a-z][a-z-]*s(?: [a-z][a-z0-9-]*)+$",
+              },
                 tier: { type: "string", enum: ["primary", "secondary"] },
               },
             },
@@ -301,7 +306,11 @@ const SCAN_SCHEMA = {
         },
       },
     },
-    warnings: { type: "array", maxItems: 10, items: { type: "string" } },
+    warnings: {
+      type: "array",
+      maxItems: 10,
+      items: { type: "string", minLength: 1, maxLength: 240 },
+    },
   },
 } as const;
 
@@ -469,6 +478,7 @@ async function detectItems(
     return validateRawScan(JSON.parse(message.content));
   } catch (error) {
     if (error instanceof ScanFailure) throw error;
+    console.warn("photo scan provider payload rejected");
     throw new ScanFailure(
       503,
       "the photo scan returned invalid data",
@@ -502,13 +512,23 @@ export async function handleInventoryScan(
       items,
       config,
     );
-    const canonical = raw.items.length
-      ? await canonicalizeCapabilityGroups(
-          raw.items.map((item) => item.capabilities),
-          items,
-          config,
-        )
-      : [];
+    let canonical: Capability[][];
+    try {
+      canonical = raw.items.length
+        ? await canonicalizeCapabilityGroups(
+            raw.items.map((item) => item.capabilities),
+            items,
+            config,
+          )
+        : [];
+    } catch {
+      console.warn("photo scan canonicalization rejected provider capabilities");
+      throw new ScanFailure(
+        503,
+        "the photo scan returned invalid data",
+        "try again with a clearer, well-lit photo",
+      );
+    }
     return {
       status: 200,
       body: {
