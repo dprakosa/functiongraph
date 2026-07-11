@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { authenticateEvaluateRequest } from "./_lib/auth";
-import { handleEvaluate } from "./_lib/handler";
+import { authenticateEvaluateRequest } from "./_lib/auth.js";
+import { handleEvaluate } from "./_lib/handler.js";
 
 /** API-1: product evaluation endpoint. POST /api/evaluate { text } */
 export default async function evaluate(

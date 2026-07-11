@@ -1,4 +1,4 @@
-import { LiveUnavailableError } from "./errors";
+import { LiveUnavailableError } from "./errors.js";
 
 /**
  * Pinecone vector store for ALG-2 canonicalization vectors (§14 decision log,

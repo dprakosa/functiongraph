@@ -1,6 +1,6 @@
 import { createClerkClient } from "@clerk/backend";
 import type { VercelRequest } from "@vercel/node";
-import type { EvaluateError } from "../../src/lib/types";
+import type { EvaluateError } from "../../src/lib/types.js";
 
 export type AuthOutcome =
   | { ok: true; userId: string }

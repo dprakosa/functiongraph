@@ -1,5 +1,5 @@
-import { capSlug } from "./text";
-import type { Item, Tier } from "./types";
+import { capSlug } from "./text.js";
+import type { Item, Tier } from "./types.js";
 
 /**
  * ALG-1: the capability vocabulary is derived from the inventory at load.

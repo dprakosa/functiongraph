@@ -1,15 +1,15 @@
-import demoCacheFile from "../../src/data/demoCache.json";
-import inventoryFile from "../../src/data/inventory.json";
-import { norm } from "../../src/lib/text";
-import { scoreProduct } from "../../src/lib/scoring";
+import demoCacheFile from "../../src/data/demoCache.json" with { type: "json" };
+import inventoryFile from "../../src/data/inventory.json" with { type: "json" };
+import { norm } from "../../src/lib/text.js";
+import { scoreProduct } from "../../src/lib/scoring.js";
 import type {
   DemoCacheFile,
   EvaluateError,
   EvaluateResult,
   InventoryFile,
   ProductDecomposition,
-} from "../../src/lib/types";
-import { decomposeLive, LiveUnavailableError } from "./live";
+} from "../../src/lib/types.js";
+import { decomposeLive, LiveUnavailableError } from "./live.js";
 
 const demoCache = demoCacheFile as unknown as DemoCacheFile;
 const inventory = inventoryFile as InventoryFile;

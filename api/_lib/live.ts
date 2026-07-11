@@ -1,12 +1,12 @@
-import { capSlug } from "../../src/lib/text";
-import { deriveVocabulary } from "../../src/lib/vocabulary";
+import { capSlug } from "../../src/lib/text.js";
+import { deriveVocabulary } from "../../src/lib/vocabulary.js";
 import type {
   Capability,
   Item,
   ProductDecomposition,
   Tier,
-} from "../../src/lib/types";
-import { LiveUnavailableError } from "./errors";
+} from "../../src/lib/types.js";
+import { LiveUnavailableError } from "./errors.js";
 import {
   fetchExistingIds,
   queryNearest,
@@ -14,7 +14,7 @@ import {
   upsertVectors,
   vectorNamespace,
   type PineconeConfig,
-} from "./pinecone";
+} from "./pinecone.js";
 
 /**
  * Live evaluation path (API-2 step 3): structured LLM decomposition (API-4)
@@ -22,7 +22,7 @@ import {
  * (API-6, NFR-5); keys never leave the server.
  */
 
-export { LiveUnavailableError } from "./errors";
+export { LiveUnavailableError } from "./errors.js";
 
 /** ALG-2 / §13: snap threshold 0.83. */
 export const SNAP_THRESHOLD = 0.83;

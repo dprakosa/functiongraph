@@ -1,6 +1,6 @@
-import { capSlug } from "./text";
-import { deriveVocabulary } from "./vocabulary";
-import type { Item, ProductDecomposition, Row, Tier, Verdict } from "./types";
+import { capSlug } from "./text.js";
+import { deriveVocabulary } from "./vocabulary.js";
+import type { Item, ProductDecomposition, Row, Tier, Verdict } from "./types.js";
 
 /** ALG-4 */
 export const TIER_WEIGHTS: Record<Tier, number> = { primary: 1.0, secondary: 0.4 };

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import sharp from "sharp";
-import inventoryFile from "../../src/data/inventory.json";
-import { deriveVocabulary } from "../../src/lib/vocabulary";
+import inventoryFile from "../../src/data/inventory.json" with { type: "json" };
+import { deriveVocabulary } from "../../src/lib/vocabulary.js";
 import type {
   Capability,
   EvaluateError,
@@ -10,13 +10,13 @@ import type {
   InventoryScanDomain,
   InventoryScanResult,
   Tier,
-} from "../../src/lib/types";
+} from "../../src/lib/types.js";
 import {
   canonicalizeCapabilityGroups,
   LiveUnavailableError,
   readLiveConfig,
   type LiveConfig,
-} from "./live";
+} from "./live.js";
 
 const inventory = inventoryFile as InventoryFile;
 const OPENAI_CHAT_COMPLETIONS = "https://api.openai.com/v1/chat/completions";

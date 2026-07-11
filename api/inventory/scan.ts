@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { authenticateApiRequest } from "../_lib/auth";
-import { handleInventoryScan } from "../_lib/scanInventory";
+import { authenticateApiRequest } from "../_lib/auth.js";
+import { handleInventoryScan } from "../_lib/scanInventory.js";
 
 /** API-7: authenticated, ephemeral photo-to-inventory draft. */
 export default async function scanInventory(
