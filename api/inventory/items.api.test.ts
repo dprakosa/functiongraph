@@ -73,6 +73,51 @@ describe("personal inventory API wrappers", () => {
     expect(outgoing.json).toHaveBeenCalledWith({ items: [] });
   });
 
+  it("forwards only the authenticated confirmation request to the collection handler", async () => {
+    const body = {
+      items: [
+        {
+          name: "Toaster",
+          domain: "kitchen",
+          quantity: 1,
+          capabilities: [{ name: "toasts bread", tier: "primary" }],
+        },
+      ],
+    };
+    const created = {
+      items: [
+        {
+          id: "f65cf02e-134f-4bb7-bec8-1c43767315c3",
+          ...body.items[0],
+          source: "photo",
+          createdAt: "2026-07-12T00:00:00.000Z",
+          updatedAt: "2026-07-12T00:00:00.000Z",
+        },
+      ],
+    };
+    vi.mocked(handleInventoryCollection).mockResolvedValue({
+      status: 201,
+      body: created,
+    });
+    const incoming = request({ method: "POST", body });
+    const outgoing = responseMock();
+
+    await inventoryCollection(incoming, outgoing.response);
+
+    expect(outgoing.setHeader).toHaveBeenCalledWith(
+      "Cache-Control",
+      "private, no-store",
+    );
+    expect(authenticateInventoryRequest).toHaveBeenCalledWith(incoming);
+    expect(handleInventoryCollection).toHaveBeenCalledWith(
+      "POST",
+      body,
+      "user_test",
+    );
+    expect(outgoing.status).toHaveBeenCalledWith(201);
+    expect(outgoing.json).toHaveBeenCalledWith(created);
+  });
+
   it("rejects unsupported collection methods before authentication", async () => {
     const outgoing = responseMock();
 

@@ -23,11 +23,49 @@ describe("inventory write validation", () => {
     ]);
   });
 
+  it("accepts a deliberate scan-candidate projection but not the review draft itself", () => {
+    const candidate = {
+      id: "candidate-1",
+      name: "Toaster",
+      quantity: 1,
+      suggestedDomain: "kitchen",
+      confidence: "high",
+      evidence: "Two bread slots are visible.",
+      capabilities: [{ name: "toasts bread", tier: "primary" }],
+    };
+
+    expect(() => parseCreateInventoryBody({ items: [candidate] })).toThrow(
+      InventoryValidationError,
+    );
+    expect(
+      parseCreateInventoryBody({
+        items: [
+          {
+            name: candidate.name,
+            domain: candidate.suggestedDomain,
+            quantity: candidate.quantity,
+            capabilities: candidate.capabilities,
+          },
+        ],
+      }),
+    ).toEqual([
+      {
+        name: "Toaster",
+        domain: "kitchen",
+        quantity: 1,
+        capabilities: [{ name: "toasts bread", tier: "primary" }],
+      },
+    ]);
+  });
+
   it.each([
     [undefined, "confirmation"],
     [{ items: [] }, "selected items"],
     [{ items: [reviewedItem], imageDataUrl: "private" }, "confirmation"],
+    [{ items: [reviewedItem], warnings: ["private"] }, "confirmation"],
+    [{ items: [{ ...reviewedItem, id: "candidate-1" }] }, "item"],
     [{ items: [{ ...reviewedItem, evidence: "visible slots" }] }, "item"],
+    [{ items: [{ ...reviewedItem, confidence: "high" }] }, "item"],
     [{ items: [{ ...reviewedItem, domain: "bedroom" }] }, "room"],
     [{ items: [{ ...reviewedItem, quantity: 0 }] }, "quantity"],
     [{ items: [{ ...reviewedItem, name: "   " }] }, "name"],
