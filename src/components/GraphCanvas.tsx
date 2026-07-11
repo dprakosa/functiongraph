@@ -1,10 +1,21 @@
-import { useEffect, useMemo, useRef } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import * as d3 from "d3";
 import type { GraphData, GraphEdgeDatum, GraphNodeDatum } from "../graph/buildGraph";
 import {
   deriveItemCapabilitySelection,
   GHOST_ID,
 } from "../graph/buildGraph";
+import {
+  placeGraphTooltip,
+  type GraphNodeTooltip,
+} from "../graph/tooltip";
 import type { Phase } from "../state/appReducer";
 import { TIMINGS } from "../state/useBeats";
 
@@ -38,6 +49,74 @@ const GHOST_PIN_PHASES: ReadonlySet<Phase> = new Set([
   "scanning",
   "routing",
 ]);
+
+const GRAPH_TOOLTIP_ID = "graph-node-tooltip";
+
+type TooltipTrigger = "pointer" | "focus" | "touch";
+
+interface ActiveTooltip {
+  nodeId: string;
+  model: GraphNodeTooltip;
+  trigger: TooltipTrigger;
+}
+
+function GraphTooltip({
+  active,
+  tooltipRef,
+}: {
+  active: ActiveTooltip;
+  tooltipRef: RefObject<HTMLDivElement | null>;
+}) {
+  const { model } = active;
+  const previewCopy = model.preview
+    ? [
+        ...model.preview.values,
+        ...(model.preview.overflowCount > 0
+          ? [`+${model.preview.overflowCount} more`]
+          : []),
+      ].join(" · ")
+    : null;
+
+  return (
+    <div
+      ref={tooltipRef}
+      className="graph-tooltip"
+      id={GRAPH_TOOLTIP_ID}
+      role="tooltip"
+      data-tooltip-kind={model.kind}
+      data-tooltip-node-id={active.nodeId}
+    >
+      <span className="graph-tooltip__eyebrow" aria-hidden="true">
+        {model.eyebrow}
+      </span>
+      <strong className="graph-tooltip__title" aria-hidden="true">
+        {model.title}
+      </strong>
+      {model.status && <p className="graph-tooltip__status">{model.status}</p>}
+      {model.details.length > 0 && (
+        <dl className="graph-tooltip__details">
+          {model.details.map((detail) => (
+            <div key={detail.label}>
+              <dt>{detail.label}</dt>
+              <dd>{detail.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {model.preview && (
+        <p className="graph-tooltip__preview">
+          <span>{model.preview.label}</span>
+          {previewCopy || "None mapped"}
+        </p>
+      )}
+      {model.action && (
+        <p className="graph-tooltip__action" aria-hidden="true">
+          {model.action} →
+        </p>
+      )}
+    </div>
+  );
+}
 
 function itemLabelLines(label: string): string[] {
   if (label.length <= 11 || !label.includes(" ")) return [label];
@@ -156,9 +235,16 @@ function accessibleNodeKind(node: GraphNodeDatum): string {
       return "unique capability";
     case "room-unscanned":
       return "unscanned room";
+    case "ghost":
+      return "product under consideration";
     default:
       return node.kind;
   }
+}
+
+function accessibleNodeLabel(node: GraphNodeDatum): string {
+  const action = node.tooltip.action ? `. ${node.tooltip.action}` : "";
+  return `${node.tooltip.title}, ${accessibleNodeKind(node)}${action}`;
 }
 
 function buildNodeBody(
@@ -312,7 +398,16 @@ export function GraphCanvas({
     () => deriveItemCapabilitySelection(graph, selectedItemId),
     [graph, selectedItemId],
   );
+  const [activeTooltip, setActiveTooltip] = useState<ActiveTooltip | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const activeTooltipRef = useRef<ActiveTooltip | null>(null);
+  const latestNodesByIdRef = useRef<Map<string, GraphNodeDatum>>(new Map());
+  latestNodesByIdRef.current = new Map(graph.nodes.map((node) => [node.id, node]));
+  const hoveredNodeRef = useRef<string | null>(null);
+  const focusedNodeRef = useRef<string | null>(null);
+  const dismissedTooltipNodeRef = useRef<string | null>(null);
   const svgRef = useRef<d3.Selection<SVGSVGElement, unknown, null, undefined> | null>(null);
   const viewportRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
@@ -332,6 +427,55 @@ export function GraphCanvas({
   onNodeClickRef.current = onNodeClick;
   const onZoomOutRef = useRef(onZoomOut);
   onZoomOutRef.current = onZoomOut;
+
+  const showTooltipRef = useRef<
+    (node: GraphNodeDatum, trigger: TooltipTrigger) => void
+  >(() => undefined);
+  const hideTooltipRef = useRef<
+    (nodeId?: string, preserveTouch?: boolean) => void
+  >(() => undefined);
+
+  showTooltipRef.current = (node, trigger) => {
+    const latest = latestNodesByIdRef.current.get(node.id) ?? node;
+    const next = { nodeId: node.id, model: latest.tooltip, trigger };
+    activeTooltipRef.current = next;
+    setActiveTooltip(next);
+  };
+
+  hideTooltipRef.current = (nodeId, preserveTouch = false) => {
+    setActiveTooltip((current) => {
+      if (!current || (nodeId && current.nodeId !== nodeId)) return current;
+      if (preserveTouch && current.trigger === "touch") return current;
+      activeTooltipRef.current = null;
+      return null;
+    });
+  };
+
+  function positionActiveTooltip() {
+    const container = containerRef.current;
+    const tooltip = tooltipRef.current;
+    const active = activeTooltipRef.current;
+    const nodeSelection = nodeSelRef.current;
+    if (!container || !tooltip || !active || !nodeSelection) return;
+
+    const nodeElement = nodeSelection
+      .filter((node) => node.id === active.nodeId)
+      .node();
+    if (!nodeElement) {
+      hideTooltipRef.current(active.nodeId);
+      return;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const nodeRect = nodeElement.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const placement = placeGraphTooltip(containerRect, nodeRect, tooltipRect);
+
+    tooltip.style.left = `${Math.round(placement.left)}px`;
+    tooltip.style.top = `${Math.round(placement.top)}px`;
+    tooltip.style.visibility = "visible";
+    tooltip.dataset.side = placement.side;
+  }
 
   function renderSimulationFrame() {
     nodesRef.current.forEach((node) => {
@@ -366,16 +510,52 @@ export function GraphCanvas({
     [graph],
   );
 
+  useLayoutEffect(() => {
+    positionActiveTooltip();
+    // Positioning reads the freshly rendered tooltip and current SVG node.
+    // It is cosmetic and never touches force state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTooltip]);
+
+  useEffect(() => {
+    const dismissOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || !activeTooltipRef.current) return;
+      event.preventDefault();
+      dismissedTooltipNodeRef.current = activeTooltipRef.current.nodeId;
+      hideTooltipRef.current();
+    };
+    const dismissTouchOutside = (event: PointerEvent) => {
+      const active = activeTooltipRef.current;
+      if (!active || active.trigger !== "touch") return;
+      const target = event.target;
+      if (target instanceof Element && target.closest("g.gnode")) return;
+      hideTooltipRef.current();
+    };
+    window.addEventListener("keydown", dismissOnEscape);
+    window.addEventListener("pointerdown", dismissTouchOutside, true);
+    return () => {
+      window.removeEventListener("keydown", dismissOnEscape);
+      window.removeEventListener("pointerdown", dismissTouchOutside, true);
+    };
+  }, []);
+
+  useEffect(() => {
+    hideTooltipRef.current();
+    hoveredNodeRef.current = null;
+    focusedNodeRef.current = null;
+    dismissedTooltipNodeRef.current = null;
+  }, [signature, viewKey]);
+
   // --- one-time svg/simulation scaffold -----------------------------------
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const width = Math.max(320, container.clientWidth || 900);
-    const height = Math.max(320, container.clientHeight || 640);
+    const stage = stageRef.current;
+    if (!stage) return;
+    const width = Math.max(320, stage.clientWidth || 900);
+    const height = Math.max(320, stage.clientHeight || 640);
     sizeRef.current = { width, height };
 
     const svg = d3
-      .select(container)
+      .select(stage)
       .append("svg")
       .attr("class", "graph-svg")
       .attr("width", "100%")
@@ -388,6 +568,11 @@ export function GraphCanvas({
       .text(
         "Force-directed map of what you own. Coral means covered, green means genuinely new.",
       );
+    svg.on("pointerdown.tooltip-dismiss", (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("g.gnode")) return;
+      hideTooltipRef.current();
+    });
 
     const viewport = svg.append("g").attr("class", "graph-viewport");
     viewport.append("g").attr("class", "layer-scan");
@@ -400,6 +585,7 @@ export function GraphCanvas({
       .filter((event) => event.type !== "dblclick")
       .on("zoom", (event) => {
         viewport.attr("transform", event.transform.toString());
+        positionActiveTooltip();
         if (
           event.sourceEvent &&
           viewKeyRef.current.startsWith("room:") &&
@@ -502,7 +688,7 @@ export function GraphCanvas({
       // both announced/user-initiated; refit so graph and panel share space.
       fitView(TIMINGS.cameraMs);
     });
-    resizeObserver.observe(container);
+    resizeObserver.observe(stage);
 
     return () => {
       resizeObserver.disconnect();
@@ -631,22 +817,67 @@ export function GraphCanvas({
         (node) =>
           `gnode gnode--${node.kind}${node.hot ? " is-hot" : ""}`,
       )
-      .attr("role", (node) => (isInteractiveNode(node) ? "button" : null))
-      .attr("tabindex", (node) => (isInteractiveNode(node) ? 0 : null))
+      .attr("role", (node) => (isInteractiveNode(node) ? "button" : "img"))
+      .attr("tabindex", 0)
       .attr("data-node-id", (node) => node.id)
-      .attr("aria-label", (node) =>
-        `${node.label}${node.sub ? `, ${node.sub}` : ""}, ${accessibleNodeKind(node)}`,
-      )
+      .attr("aria-label", accessibleNodeLabel)
       .attr(
         "transform",
         (node) => `translate(${node.x ?? 0},${node.y ?? 0})`,
       )
+      .on("pointerenter.tooltip", function (_event: PointerEvent, node) {
+        hoveredNodeRef.current = node.id;
+        dismissedTooltipNodeRef.current = null;
+        showTooltipRef.current(node, "pointer");
+      })
+      .on("pointerleave.tooltip", function (_event: PointerEvent, node) {
+        hoveredNodeRef.current =
+          hoveredNodeRef.current === node.id ? null : hoveredNodeRef.current;
+        if (
+          focusedNodeRef.current === node.id &&
+          dismissedTooltipNodeRef.current !== node.id
+        ) {
+          showTooltipRef.current(node, "focus");
+          return;
+        }
+        hideTooltipRef.current(node.id, true);
+      })
+      .on("focus.tooltip", function (_event: FocusEvent, node) {
+        focusedNodeRef.current = node.id;
+        dismissedTooltipNodeRef.current = null;
+        showTooltipRef.current(node, "focus");
+      })
+      .on("blur.tooltip", function (_event: FocusEvent, node) {
+        focusedNodeRef.current =
+          focusedNodeRef.current === node.id ? null : focusedNodeRef.current;
+        if (
+          hoveredNodeRef.current === node.id &&
+          dismissedTooltipNodeRef.current !== node.id
+        ) {
+          showTooltipRef.current(node, "pointer");
+          return;
+        }
+        hideTooltipRef.current(node.id, true);
+      })
+      .on("pointerdown.tooltip", function (event: PointerEvent, node) {
+        if (event.pointerType === "touch") {
+          dismissedTooltipNodeRef.current = null;
+          showTooltipRef.current(node, "touch");
+        }
+      })
       .on("click", (event: MouseEvent, node) => {
         if (!isInteractiveNode(node)) return;
         event.stopPropagation();
         onNodeClickRef.current(node);
       })
       .on("keydown", (event: KeyboardEvent, node) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          dismissedTooltipNodeRef.current = node.id;
+          hideTooltipRef.current(node.id);
+          return;
+        }
         if (isInteractiveNode(node) && (event.key === "Enter" || event.key === " ")) {
           event.preventDefault();
           onNodeClickRef.current(node);
@@ -765,6 +996,28 @@ export function GraphCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature, phase, reducedMotion, viewKey]);
 
+  // Tooltip copy can change while node/edge ids stay stable (for example the
+  // ghost's evaluation phase). Refresh only the shaped tooltip model; this is
+  // deliberately separate from the structural reconcile and force lifecycle.
+  useEffect(() => {
+    const latestById = latestNodesByIdRef.current;
+    nodesRef.current.forEach((node) => {
+      const latest = latestById.get(node.id);
+      if (latest) node.tooltip = latest.tooltip;
+    });
+
+    const active = activeTooltipRef.current;
+    if (!active) return;
+    const latest = latestById.get(active.nodeId);
+    if (!latest) {
+      hideTooltipRef.current(active.nodeId);
+      return;
+    }
+    const next = { ...active, model: latest.tooltip };
+    activeTooltipRef.current = next;
+    setActiveTooltip(next);
+  }, [graph]);
+
   // --- cosmetic state: never touches the simulation (SM-8) -----------------
   useEffect(() => {
     const nodeSelection = nodeSelRef.current;
@@ -809,14 +1062,19 @@ export function GraphCanvas({
           node.id !== selectedItemId &&
           !itemCapabilitySelection.nodeIds.has(node.id),
       )
+      .classed(
+        "has-visible-tooltip",
+        (node) => node.id === activeTooltip?.nodeId,
+      )
       .attr("aria-pressed", (node) =>
         node.kind === "item" ? String(node.id === selectedItemId) : null,
       )
-      .attr("aria-describedby", (node) =>
-        node.kind === "item" && node.id === selectedItemId
+      .attr("aria-describedby", (node) => {
+        if (node.id === activeTooltip?.nodeId) return GRAPH_TOOLTIP_ID;
+        return node.kind === "item" && node.id === selectedItemId
           ? "item-selection-status"
-          : null,
-      );
+          : null;
+      });
 
     scanSelection?.classed(
       "is-dimmed",
@@ -860,6 +1118,7 @@ export function GraphCanvas({
     routingActive,
     selectedItemId,
     signature,
+    activeTooltip?.nodeId,
   ]);
 
   // A preference change can arrive while the simulation or an eased camera
@@ -882,6 +1141,14 @@ export function GraphCanvas({
       ref={containerRef}
       className={`graph-canvas${selectedItemId ? " has-item-focus" : ""}`}
       data-testid="graph-canvas"
-    />
+    >
+      <div ref={stageRef} className="graph-canvas__stage" />
+      {activeTooltip && (
+        <GraphTooltip
+          active={activeTooltip}
+          tooltipRef={tooltipRef}
+        />
+      )}
+    </div>
   );
 }

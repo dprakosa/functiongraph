@@ -11,16 +11,14 @@ import { copy } from "../lib/copy";
 import type { Phase, View } from "../state/appReducer";
 import type { RouteResult } from "../lib/route";
 import type { EvaluateResult, Item, Tier } from "../lib/types";
+import {
+  deriveGraphNodeTooltip,
+  type GraphNodeTooltip,
+  type TooltipNodeKind,
+} from "./tooltip";
 
 /** VIS-3 node taxonomy. Dashed always means provisional / not owned. */
-export type NodeKind =
-  | "room"
-  | "room-unscanned"
-  | "item"
-  | "hub"
-  | "hub-new"
-  | "ghost"
-  | "mini";
+export type NodeKind = TooltipNodeKind;
 
 /** VIS-4 edge taxonomy (pulse is a cosmetic class, not a kind; SM-8). */
 export type EdgeKind =
@@ -41,6 +39,7 @@ export interface GraphNodeDatum {
   /** node id whose last position seeds this node when it first appears (SM-8) */
   seedNear?: string;
   domain?: string;
+  tooltip: GraphNodeTooltip;
 }
 
 export interface GraphEdgeDatum {
@@ -109,6 +108,14 @@ const hubNewId = (slug: string) => `hubnew:${slug}`;
 const miniId = (slug: string) => `mini:${slug}`;
 export const GHOST_ID = "ghost";
 
+function savedQuantity(item: Item): number | null | undefined {
+  const quantity = (item as Item & { quantity?: unknown }).quantity;
+  if (quantity === null) return null;
+  return typeof quantity === "number" && Number.isInteger(quantity) && quantity > 0
+    ? quantity
+    : undefined;
+}
+
 function inventoryEdge(
   itemId: string,
   slug: string,
@@ -174,6 +181,12 @@ export function buildGraph({
         sub: `${domain.itemIds.length} items`,
         badge: hotspotCount || undefined,
         domain: domain.label,
+        tooltip: deriveGraphNodeTooltip({
+          kind: "room",
+          name: domain.label,
+          itemCount: domain.itemIds.length,
+          hotspotCount,
+        }),
       });
     });
     unscannedRooms.forEach((label) => {
@@ -182,6 +195,7 @@ export function buildGraph({
         kind: "room-unscanned",
         label,
         sub: copy.unscannedCta,
+        tooltip: deriveGraphNodeTooltip({ kind: "room-unscanned", name: label }),
       });
     });
 
@@ -190,6 +204,12 @@ export function buildGraph({
         id: GHOST_ID,
         kind: "ghost",
         label: copy.ghostLabel(result.name, result.price),
+        tooltip: deriveGraphNodeTooltip({
+          kind: "ghost",
+          name: result.name,
+          price: result.price,
+          phase,
+        }),
       });
 
       if (phase === "extracting" || phase === "scanning" || phase === "routing") {
@@ -217,6 +237,11 @@ export function buildGraph({
             kind: "hub-new",
             label: row.capability,
             seedNear: GHOST_ID,
+            tooltip: deriveGraphNodeTooltip({
+              kind: "hub-new",
+              name: row.capability,
+              tier: row.tier,
+            }),
           });
           edges.push({
             id: ghostEdgeId(row.capSlug),
@@ -254,6 +279,13 @@ export function buildGraph({
       badge: uniqueCount || undefined,
       seedNear: roomId(roomLabel),
       domain: roomLabel,
+      tooltip: deriveGraphNodeTooltip({
+        kind: "item",
+        name: item.name,
+        domain: roomLabel,
+        quantity: savedQuantity(item),
+        capabilities: item.capabilities.map((capability) => capability.name),
+      }),
     });
   });
 
@@ -265,6 +297,13 @@ export function buildGraph({
       hot: hub.hot,
       seedNear: roomId(roomLabel),
       domain: roomLabel,
+      tooltip: deriveGraphNodeTooltip({
+        kind: "hub",
+        name: hub.name,
+        ownerCount: hub.degree,
+        owners: hub.owners.map((owner) => owner.itemName),
+        hot: hub.hot,
+      }),
     });
     hub.owners.forEach((owner) => {
       if (!roomItemIds.has(owner.itemId)) return;
@@ -286,6 +325,12 @@ export function buildGraph({
         kind: "mini",
         label: capability.name,
         seedNear: expandedItem.id,
+        tooltip: deriveGraphNodeTooltip({
+          kind: "mini",
+          name: capability.name,
+          owner: expandedItem.name,
+          tier: capability.tier,
+        }),
       });
       edges.push({
         id: inventoryEdgeId(expandedItem.id, slug),
@@ -305,6 +350,12 @@ export function buildGraph({
       id: GHOST_ID,
       kind: "ghost",
       label: copy.ghostLabel(result.name, result.price),
+      tooltip: deriveGraphNodeTooltip({
+        kind: "ghost",
+        name: result.name,
+        price: result.price,
+        phase,
+      }),
     });
 
     result.verdict.rows.forEach((row) => {
@@ -329,6 +380,13 @@ export function buildGraph({
               hot: promotedHub.hot,
               seedNear: localOwner?.itemId ?? GHOST_ID,
               domain: promotedHub.domain,
+              tooltip: deriveGraphNodeTooltip({
+                kind: "hub",
+                name: promotedHub.name,
+                ownerCount: promotedHub.degree,
+                owners: promotedHub.owners.map((candidate) => candidate.itemName),
+                hot: promotedHub.hot,
+              }),
             });
           }
         } else {
@@ -349,6 +407,12 @@ export function buildGraph({
               domain: owner
                 ? domainByItemId.get(owner.itemId)
                 : undefined,
+              tooltip: deriveGraphNodeTooltip({
+                kind: "mini",
+                name: row.capability,
+                owner: owner?.itemName ?? null,
+                tier: owner?.tier ?? null,
+              }),
             });
           }
           if (
@@ -386,6 +450,11 @@ export function buildGraph({
           kind: "hub-new",
           label: row.capability,
           seedNear: GHOST_ID,
+          tooltip: deriveGraphNodeTooltip({
+            kind: "hub-new",
+            name: row.capability,
+            tier: row.tier,
+          }),
         });
         edges.push({
           id: ghostEdgeId(row.capSlug),

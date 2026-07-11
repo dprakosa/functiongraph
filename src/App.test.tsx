@@ -30,6 +30,13 @@ vi.mock("./components/GraphCanvas", () => ({
               kind: "room",
               label: "kitchen",
               domain: "kitchen",
+              tooltip: {
+                kind: "room",
+                eyebrow: "Room",
+                title: "Kitchen",
+                details: [],
+                action: "Enter room",
+              },
             })
           }
         >
@@ -43,6 +50,13 @@ vi.mock("./components/GraphCanvas", () => ({
               kind: "item",
               label: "Air fryer",
               domain: "kitchen",
+              tooltip: {
+                kind: "item",
+                eyebrow: "Owned item",
+                title: "Air fryer",
+                details: [],
+                action: "Select item to inspect",
+              },
             })
           }
         >
