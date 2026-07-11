@@ -111,19 +111,28 @@ function mockResponse(payload: unknown): Response {
 }
 
 function installOpenAiMock(
-  decomposition: MockDecomposition,
+  decomposition: MockDecomposition | MockDecomposition[],
   extraVectors: Record<string, number[]> = {},
 ) {
   const vectors = { ...vocabularyVectors, ...extraVectors };
+  const decompositions = Array.isArray(decomposition)
+    ? decomposition
+    : [decomposition];
+  let completionIndex = 0;
   const fetchMock = vi.fn(
     async (url: string | URL, init?: RequestInit): Promise<Response> => {
       const payload = JSON.parse(String(init?.body)) as {
         input?: string[];
       };
       if (String(url).endsWith("/chat/completions")) {
+        const next =
+          decompositions[
+            Math.min(completionIndex, decompositions.length - 1)
+          ];
+        completionIndex += 1;
         return mockResponse({
           choices: [
-            { message: { content: JSON.stringify(decomposition) } },
+            { message: { content: JSON.stringify(next) } },
           ],
         });
       }
@@ -419,6 +428,56 @@ describe("decomposeLive canonicalization (API-4, ALG-2)", () => {
     );
   });
 
+  it("retries once with distinct-job guidance after canonicalization collapses", async () => {
+    const atThreshold = [
+      Math.sqrt(1 - SNAP_THRESHOLD ** 2),
+      0,
+      SNAP_THRESHOLD,
+    ];
+    const fetchMock = installOpenAiMock(
+      [
+        {
+          name: "Candidate oven",
+          price: 100,
+          capabilities: [
+            { name: "reheats leftovers", tier: "secondary" },
+            { name: "warms cooked meals", tier: "primary" },
+            { name: "heats leftover dishes", tier: "secondary" },
+          ],
+          altSuggestion: null,
+        },
+        {
+          name: "Candidate oven",
+          price: 100,
+          capabilities: [
+            { name: "bakes food", tier: "primary" },
+            { name: "toasts bread", tier: "primary" },
+            { name: "reheats leftovers", tier: "secondary" },
+          ],
+          altSuggestion: null,
+        },
+      ],
+      {
+        "warms cooked meals": atThreshold,
+        "heats leftover dishes": atThreshold,
+      },
+    );
+
+    const result = await decomposeLive("candidate oven", liveItems);
+
+    expect(result.capabilities).toHaveLength(3);
+    const completionCalls = fetchMock.mock.calls.filter(([url]) =>
+      String(url).endsWith("/chat/completions"),
+    );
+    expect(completionCalls).toHaveLength(2);
+    const retryBody = JSON.parse(String(completionCalls[1]?.[1]?.body)) as {
+      messages: { content: string }[];
+    };
+    expect(retryBody.messages[0]?.content).toContain(
+      "Return 3-8 semantically distinct functional jobs",
+    );
+  });
+
   it("rejects an invalid new name after canonicalization", async () => {
     installOpenAiMock(
       {
@@ -454,7 +513,7 @@ describe("decomposeLive canonicalization (API-4, ALG-2)", () => {
     await expect(decomposeLive("not a product", liveItems)).rejects.toThrow(
       "not a product",
     );
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
 
