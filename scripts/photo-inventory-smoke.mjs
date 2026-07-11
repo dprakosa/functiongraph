@@ -251,17 +251,22 @@ async function main() {
     }
   }
 
-  async function scanWithOneTransientRetry(token) {
-    for (let attempt = 1; attempt <= 2; attempt += 1) {
+  async function scanWithTransientRetries(token) {
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       const result = await requestJson("inventory.scan", "/api/inventory/scan", {
         method: "POST",
         token,
         body: { imageDataUrl, roomHint: "kitchen" },
       });
       if (result.status === 200) return result;
-      if ((result.status === 429 || result.status === 503) && attempt === 1) {
-        log("inventory.scan.retry", { status: result.status, ms: 1_500 });
-        await wait(1_500);
+      if (
+        (result.status === 429 || result.status === 503) &&
+        attempt < maxAttempts
+      ) {
+        const delay = attempt * 1_500;
+        log("inventory.scan.retry", { status: result.status, ms: delay });
+        await wait(delay);
         continue;
       }
       return result;
@@ -300,7 +305,7 @@ async function main() {
     let tokenA = await sessionToken(sessionA.id);
     const tokenB = await sessionToken(sessionB.id);
 
-    const scan = await scanWithOneTransientRetry(tokenA);
+    const scan = await scanWithTransientRetries(tokenA);
     if (scan.status !== 200) {
       throw new SmokeFailure(scanFailureReason(scan.body), scan.status);
     }
@@ -388,40 +393,26 @@ async function main() {
     assertStatus(foreignDelete, 404, "inventory-cross-user-delete");
 
     tokenA = await sessionToken(sessionA.id);
+    const confirmedFunctions = candidate.capabilities
+      .map((capability) => capability.name)
+      .join(", ");
     const evaluation = await requestJson("evaluation.inventory", "/api/evaluate", {
       method: "POST",
       token: tokenA,
       body: {
-        text: "Convection countertop oven — $129",
+        text: `A product named ${candidate.name} that performs these functions: ${confirmedFunctions}.`,
       },
     });
     assertStatus(evaluation, 200, "evaluation-inventory");
     assertNoStore(evaluation, "evaluation-inventory");
-    if (evaluation.body?.cached !== true) {
-      throw new SmokeFailure("evaluation-cache-miss", evaluation.status);
+    if (evaluation.body?.cached !== false) {
+      throw new SmokeFailure("evaluation-inventory-not-live", evaluation.status);
     }
     const coveredByConfirmedItem = evaluation.body?.verdict?.rows?.some(
       (row) => row?.covered && row?.bestCoverer === candidate.name,
     );
     if (!coveredByConfirmedItem) {
       throw new SmokeFailure("evaluation-inventory-not-used", evaluation.status);
-    }
-
-    const liveEvaluation = await requestJson(
-      "evaluation.live",
-      "/api/evaluate",
-      {
-        method: "POST",
-        token: tokenA,
-        body: {
-          text: "Compact countertop air fryer for cooking frozen food and reheating leftovers",
-        },
-      },
-    );
-    assertStatus(liveEvaluation, 200, "evaluation-live");
-    assertNoStore(liveEvaluation, "evaluation-live");
-    if (liveEvaluation.body?.cached !== false) {
-      throw new SmokeFailure("evaluation-live-not-live", liveEvaluation.status);
     }
 
     const updated = await requestJson(

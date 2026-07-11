@@ -463,48 +463,69 @@ export async function decomposeLive(
 ): Promise<ProductDecomposition> {
   const { apiKey, chatModel, embedModel, embedRevision } = readLiveConfig();
   const vocabularyNames = [...deriveVocabulary(items).keys()];
+  let validationError: unknown;
 
-  const completion = await openai(
-    "/chat/completions",
-    {
-      model: chatModel,
-      messages: [
-        { role: "system", content: decompositionPrompt(vocabularyNames) },
-        { role: "user", content: text },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "product_decomposition",
-          strict: true,
-          schema: DECOMPOSITION_SCHEMA,
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const retryInstruction =
+      attempt === 0
+        ? ""
+        : [
+            "",
+            "Retry requirement: the previous result failed validation after canonicalization.",
+            "Return 3-8 semantically distinct functional jobs, not synonyms or restatements",
+            "of the same job. Follow the capability naming law exactly.",
+          ].join("\n");
+    const completion = await openai(
+      "/chat/completions",
+      {
+        model: chatModel,
+        messages: [
+          {
+            role: "system",
+            content: `${decompositionPrompt(vocabularyNames)}${retryInstruction}`,
+          },
+          { role: "user", content: text },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "product_decomposition",
+            strict: true,
+            schema: DECOMPOSITION_SCHEMA,
+          },
         },
       },
-    },
-    apiKey,
-  );
+      apiKey,
+    );
 
-  const raw = JSON.parse(completion.choices[0].message.content) as {
-    name: string | null;
-    price: number | null;
-    capabilities: { name: string; tier: Tier }[];
-    altSuggestion: string | null;
-  };
-  if (!raw.name) {
-    throw new Error("not a product");
+    try {
+      const raw = JSON.parse(completion.choices[0].message.content) as {
+        name: string | null;
+        price: number | null;
+        capabilities: { name: string; tier: Tier }[];
+        altSuggestion: string | null;
+      };
+      if (!raw.name) {
+        throw new Error("not a product");
+      }
+
+      const [finalizedCapabilities] = await canonicalizeCapabilityGroups(
+        [raw.capabilities],
+        items,
+        { apiKey, chatModel, embedModel, embedRevision },
+        { min: 3, max: 8 },
+      );
+
+      return {
+        name: raw.name,
+        price: raw.price,
+        capabilities: finalizedCapabilities,
+        altSuggestion: raw.altSuggestion,
+      };
+    } catch (error) {
+      validationError = error;
+    }
   }
 
-  const [finalizedCapabilities] = await canonicalizeCapabilityGroups(
-    [raw.capabilities],
-    items,
-    { apiKey, chatModel, embedModel, embedRevision },
-    { min: 3, max: 8 },
-  );
-
-  return {
-    name: raw.name,
-    price: raw.price,
-    capabilities: finalizedCapabilities,
-    altSuggestion: raw.altSuggestion,
-  };
+  throw validationError;
 }
