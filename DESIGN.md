@@ -1,93 +1,95 @@
-# FunctionGraph visual implementation guide
+# FunctionGraph visual implementation guide — Atlassian Design System edition
 
 ## Authority and intent
 
-This is the repository's authoritative visual implementation guide. **`PDD.md` is the highest-precedence source of truth**—that is the actual specification filename in this repository. If this guide, the generated Linear reference, `README.md`, `CLAUDE.md`, `visualization-design.md`, code comments, or chat history conflicts with `PDD.md`, follow `PDD.md`. Do not alter normative requirement IDs, values, algorithms, state ordering, or scope through visual work.
+This is the repository's authoritative visual implementation guide. **`PDD.md` is the highest-precedence source of truth**—that is the actual specification filename in this repository. If this guide, `README.md`, `CLAUDE.md`, code comments, or chat history conflicts with `PDD.md`, follow `PDD.md`. Do not alter normative requirement IDs, values, algorithms, state ordering, or scope through visual work.
 
-FunctionGraph is a precise, bright, technical decision tool: Linear-inspired interface discipline applied to a node-editor workspace. Keep the ultra-minimal white shell, dense readable layout, light neutral surface ladder, hairline borders, compact controls, strong type hierarchy, and fast polish. On `/graph`, the graph—not a marketing page or dashboard grid—is the product and the visual centre. The approved `/` route is a compact explanation and entry point, not a replacement for the graph experience.
+FunctionGraph is a precise, bright, technical decision tool that speaks the **Atlassian Design System (ADS)** visual language: token-driven color, the ADS type ramp, the 8px spatial grid, ADS elevation, and ADS interaction chrome — applied to a node-editor workspace. Keep the clean light shell, dense readable layout, restrained neutral surfaces, hairline borders, compact controls, strong type hierarchy, and fast polish. On the graph view, the graph—not a marketing page or dashboard grid—is the product and the visual centre.
 
-Neither route may resemble a generic SaaS template, a collection of unrelated cards, a colourful analytics dashboard, neon cyberpunk, glassmorphism, or a Linear issue-tracker clone. Keep the landing page restrained and specific to FunctionGraph instead of wrapping marketing sections around a live graph.
+The interface must feel native to Atlassian: neutral-dominant, semantic color used sparingly and meaningfully, motion that clarifies rather than decorates. It must not resemble a generic SaaS template, a collection of unrelated cards, a colourful analytics dashboard, neon cyberpunk, glassmorphism, Material Design, or a default Shadcn/Tailwind look.
 
 ## Design laws
 
-1. The live graph is the dominant surface at every `/graph` viewport; `/` remains a compact, graph-free landing page.
-2. Exactly two colours communicate verdict state: coral means `covered`; green means `new`.
-3. Amber is restricted to home-level hotspot badges. Everything else is graphite.
-4. The ghost is the only node with a glow. The transient edge pulse required by VIS-4 is the only non-node exception and lasts no longer than two seconds.
-5. Every visible claim is inspectable: verdict rows and graph edges come from the same verdict data.
-6. Motion represents computation or direct interaction; it is never decorative.
-7. The interface is decision support, not a blocker. Preserve both decision paths and the designed approval state.
+1. The live graph is the dominant surface at every graph viewport; the landing surface remains a compact, graph-free entry point.
+2. Exactly two colours communicate verdict state: **coral (the ADS red accent ramp) means `covered`; green (the ADS green accent ramp) means `new`.**
+3. **ADS brand blue is interaction chrome only**: primary buttons, focus rings, selected states, links. It never communicates verdict, warning, or graph semantics. This interprets `PDD.md` VIS-1—"speaking" colours are verdict semantics; interaction chrome is not speech.
+4. Amber (the ADS yellow accent ramp) is restricted to home-level hotspot badges. Everything else is quiet ADS neutral.
+5. The ghost is the only node with a glow. The transient edge pulse required by VIS-4 is the only non-node exception and lasts no longer than two seconds.
+6. Every visible claim is inspectable: verdict rows and graph edges come from the same verdict data.
+7. Motion represents computation or direct interaction; it is never decorative.
+8. The interface is decision support, not a blocker. Preserve both decision paths and the designed approval state.
+9. Never hardcode a colour, radius, shadow, or font weight. Consume ADS tokens through the app-level custom properties below.
 
 ## Tokens
 
-Use CSS custom properties or map these exact values into the existing token system. Do not substitute the generated Linear palette.
+ADS tokens are installed at runtime by `@atlaskit/tokens`: `src/main.tsx` calls `setGlobalTheme({ colorMode: "light" })`, which injects every `--ds-*` custom property (light color theme plus spacing, shape, and typography themes). The app runs the **light** theme only.
 
-```css
-:root {
-  color-scheme: light;
+`src/styles/app.css` binds the app-level semantic properties to ADS tokens in `:root`. Each binding carries the ADS light-theme value as a literal fallback so first paint matches before the theme CSS resolves. Add new bindings there; never scatter raw values through component rules.
 
-  --background: #ffffff;
-  --surface-1: #ffffff;
-  --surface-2: #f4f6f8;
-  --surface-3: #e8edf1;
+| App property | ADS token | Role |
+|---|---|---|
+| `--background`, `--surface-1` | `elevation.surface` | Page and card surfaces |
+| `--surface-2` | `elevation.surface.sunken` | Sunken panels (verdict panel, generic node fill) |
+| `--surface-3` | `color.background.neutral` | Neutral fills (progress track) |
+| `--border-subtle`, `--border-default` | `color.border` | Hairlines (ADS has one hairline step) |
+| `--border-strong` | `color.border.bold` | Emphasised borders, room strokes |
+| `--text-primary` | `color.text` | Primary text |
+| `--text-secondary` | `color.text.subtle` | Supporting text |
+| `--text-muted` | `color.text.subtlest` | Muted labels |
+| `--covered` | `color.border.accent.red` | Covered/redundant strokes, marks, progress fill |
+| `--covered-soft` | `color.background.accent.red.subtlest` | Ghost fill |
+| `--covered-text` | `color.text.accent.red` | Covered text |
+| `--new` | `color.border.accent.green` | New strokes and marks |
+| `--new-soft` | `color.background.accent.green.subtlest` | New-hub fill, approval fill |
+| `--new-text` | `color.text.accent.green` | New text |
+| `--amber` | `color.background.accent.yellow.bolder` | Hotspot badge fill only (badge text is `color.text.inverse`) |
+| `--item-node` / `--item-node-border` / `--item-node-text` / `--item-node-badge` | blue accent ramp (`subtlest` / `border...subtle` / `text...bolder` / `text.accent.blue`) | Item type cue (cool) |
+| `--capability-node` / `--capability-node-border` / `--capability-node-text` | orange accent ramp (`subtlest` / `border.accent.orange` / `text...bolder`) | Capability type cue (warm) |
+| `--interaction-primary` (+ `-hovered`, `-pressed`) | `color.background.brand.bold` ramp | Primary buttons |
+| `--interaction-on-primary` | `color.text.inverse` | Text on primary buttons |
+| `--focus-ring` | `color.border.focused` | Focus indicators |
 
-  --border-subtle: rgba(23, 33, 43, 0.09);
-  --border-default: rgba(23, 33, 43, 0.16);
-  --border-strong: rgba(23, 33, 43, 0.28);
+Item and capability tints are **structural type cues, never verdict or status colours**; coral and green retain their exclusive covered/new meanings. Item selection uses the ADS selected tokens (`color.background.accent.blue.subtler` + `color.border.selected`), which is interaction chrome under law 3.
 
-  --text-primary: #17212b;
-  --text-secondary: #4d5966;
-  --text-muted: #75818d;
+Derived graph plumbing (canvas dots, inventory edge strokes, ghost/pulse glows, soft approval borders) is computed **from these tokens** with `color-mix()` in `:root`—see `--canvas-dot`, `--edge-inventory`, `--edge-inventory-strong`, `--edge-faint`, `--ghost-glow`, `--pulse-glow`, `--new-border-soft`. Never re-derive alpha values inline in component rules.
 
-  --covered: #ff765f;
-  --new: #57c785;
-
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-7: 32px;
-
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
-  --radius-pill: 9999px;
-}
-```
-
-The surface ladder supplies depth: background → surface 1 → surface 2 → surface 3. Use one-pixel hairlines and, at most, restrained local shadows for overlays. Do not add decorative gradients, atmospheric lighting, glass blur, large floating rounded cards, or a new chromatic focus/brand colour. Use a neutral high-contrast focus outline.
-
-Node types may use low-chroma neutral temperature for recognition: owned items use a cool light slate, while capability pills use a warm light neutral. These are structural type cues, never verdict or status colours; coral and green retain their exclusive covered/new meanings.
-
-Amber has no general semantic token. If an existing amber is used, confine it to the badge inside a home-level hotspot room; never use it for warnings, actions, verdicts, edges, focus, or room fills. Do not introduce blue, purple, cyan, pink, or yellow status colours. Linear lavender is not part of FunctionGraph.
+Inputs use `color.background.input` and `color.border.input`. Neutral (secondary) controls use the `color.background.neutral` ramp with its `hovered`/`pressed` steps. Do not introduce purple, cyan, pink, magenta, or any additional speaking colour. Do not use `color.background.danger`/`warning` ramps for banners—errors stay neutral so red never competes with the covered semantics.
 
 ## Typography, shape, and density
 
-Use the existing sans stack where possible:
+Typography comes from the ADS typography theme:
 
-```css
-font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
-  "Segoe UI", sans-serif;
-```
-
+- Font stack: `--ds-font-family-body` (`"Atlassian Sans"` with system fallbacks). The Atlassian Sans files are not bundled; the stack degrades to system fonts cleanly. Never load a different brand font.
+- Weights: use the tokens `--ds-font-weight-medium` (500), `--ds-font-weight-semibold` (600), `--ds-font-weight-bold` (653). No raw weight literals, no weights above the bold token.
+- No negative letter-spacing. Headings are set at their natural tracking, ADS style. Small positive tracking on tiny uppercase labels is permitted.
 - Use sentence case everywhere and the fixed vocabulary in `PDD.md`.
-- Prefer 12–16px working text, compact 18–24px headings, medium weights, tight but readable line heights, and restrained negative tracking only on headings.
+- Prefer 12–16px working text and compact 16–32px headings. Density is a FunctionGraph requirement; ADS component sizes are recipes, not minimums.
 - Use `font-variant-numeric: tabular-nums` for prices, percentages, scores, and coverage counts.
 - Use `--text-secondary` and `--text-muted` for supporting copy; never solve hierarchy with many colours.
 - Do not place a giant hero heading in the application.
-- Use only the 4, 8, 12, 16, 20, 24, 32 spacing scale.
-- Default to 6–10px radii. Reserve full pills for nodes, capabilities, statuses, and compact chips—not panels or ordinary buttons.
-- Keep controls compact on desktop while preserving generous touch padding.
+
+Spacing stays on the ADS 8px grid: the working scale 4, 8, 12, 16, 20, 24, 32 maps 1:1 to `space.050`–`space.400`.
+
+Shape uses the ADS radius scale: `--ds-radius-small` (4) for rows, `--ds-radius-medium` (6) for buttons and inputs, `--ds-radius-large` (8) for cards and panels, `--ds-radius-xlarge` (12) for the workspace frame, `--ds-radius-full` for pills. Reserve full pills for nodes, capabilities, statuses, and compact chips—not panels or ordinary buttons.
+
+Elevation: flat surfaces get hairline borders only. Floating surfaces pair an elevation surface with its shadow token—`elevation.surface.raised` + `--ds-shadow-raised` for hints, `elevation.surface.overlay` + `--ds-shadow-overlay` for toasts and tooltips. Never use a shadow without its surface or vice versa; never stack decorative shadows.
+
+## Interaction chrome
+
+- Primary actions (evaluate, skip, sign-in primary) use the brand-bold recipe: `--interaction-primary` background, `--interaction-on-primary` text, `hovered`/`pressed` steps on hover/active.
+- Secondary and subtle actions use the neutral recipe: `color.background.neutral` background (or transparent for subtle), text `--text-primary`/`--text-secondary`, `hovered` step on hover, no visible border.
+- Chips and demo suggestions are borderless neutral pills.
+- Focus is always the ADS focus ring: 2px `--focus-ring` outline with 2px offset (inputs switch their border to `--focus-ring` with an inset ring instead).
+- Text selection uses brand blue with inverse text.
+- An activated verdict row (`aria-pressed="true"`) uses `color.background.selected`.
 
 ## Application composition
 
-Use a route-aware shell with shared FunctionGraph branding and Clerk account state. Navigation uses ordinary `/` and `/graph` links, preserves browser Back/Forward behavior, and restores focus to the destination heading. Keep account controls compact; do not introduce a persistent dashboard navigation rail.
+Use a route-aware shell with shared FunctionGraph branding and Clerk account state. Navigation uses ordinary links, preserves browser Back/Forward behavior, and restores focus to the destination heading. Keep account controls compact; do not introduce a persistent dashboard navigation rail. The account strip sits on `--surface-1` with a subtle bottom hairline—no dark band.
 
-### Landing page (`/`)
+### Landing surface
 
-The public landing page is a short entry point built from the existing tokens. It contains:
+The public landing surface is a short entry point built from the existing tokens. It contains:
 
 - a concise capability-level value proposition and primary `Open the graph` action;
 - a clear explanation that guests can explore the bundled demo;
@@ -97,7 +99,7 @@ The public landing page is a short entry point built from the existing tokens. I
 
 Keep the content within a restrained reading width and one or two viewport lengths. Use typography, hairlines, and small grouped steps rather than a giant hero, live D3 preview, gradient, testimonial wall, pricing grid, or repeated marketing cards.
 
-### Graph page (`/graph`)
+### Graph surface
 
 Use one compact graph application shell without a persistent top header. It contains:
 
@@ -111,7 +113,7 @@ The graph occupies most of the available viewport and most desktop width. Do not
 
 ### Product command bar
 
-Treat product entry as a precise command-bar control: compact but prominent, on a clean white surface, with a thin border, integrated submit action, visible neutral keyboard focus, and resilient wrapping for long input. Keep it vertically tight so the graph receives the majority of the viewport. Errors are friendly inline text that explains the next step; never apologize. The arrival flow has no spinner because the full result is fetched before choreography starts.
+Treat product entry as a precise command-bar control styled as an ADS text field: compact but prominent, `color.background.input` surface, `color.border.input` hairline, integrated brand-bold submit action, visible focus ring, and resilient wrapping for long input. Keep it vertically tight so the graph receives the majority of the viewport. Errors are friendly inline text that explains the next step; never apologize. The arrival flow has no spinner because the full result is fetched before choreography starts.
 
 Always expose these exact one-tap demo strings, matching the demo cache:
 
@@ -123,11 +125,11 @@ Chips wrap or scroll horizontally rather than shrinking below legibility.
 
 ## Graph workspace
 
-Home and room views are data swaps and camera moves on the same force-directed canvas. Keep drag, zoom, pan, room navigation, and force behaviour intact. Use a white dotted node-editor background with faint neutral dots; avoid strong grid lines and visually loud canvas controls. On desktop, the app shell fits the viewport without a document scrollbar so the graph receives the remaining height.
+Home and room views are data swaps and camera moves on the same force-directed canvas. Keep drag, zoom, pan, room navigation, and force behaviour intact. Use a light dotted node-editor background with faint neutral dots (`--canvas-dot`); avoid strong grid lines and visually loud canvas controls. On desktop, the app shell fits the viewport without a document scrollbar so the graph receives the remaining height.
 
 Never hardcode node positions or domain membership. Seed structural updates from current positions, let clusters emerge from shared capabilities, allow the simulation to cool fully, and never add idle motion. Reheat only for structural change: phase, expansion, a new result, or local drag. Hover, selection, row pulse, and other cosmetic highlights must not reheat the full simulation.
 
-The relationship hierarchy is home room → owned item → capability. Entering a room swaps the same canvas to its item/capability graph. Owned items connect only to capability hubs or their revealed unique mini-capabilities; item-to-item edges are forbidden. Selecting an item applies a neutral emphasis to that item, every connected capability node, and their inventory edges while visibly dimming unrelated nodes and inventory edges. It must not recolour verdict semantics or reheat physics unless unique mini-capabilities are structurally revealed.
+The relationship hierarchy is home room → owned item → capability. Entering a room swaps the same canvas to its item/capability graph. Owned items connect only to capability hubs or their revealed unique mini-capabilities; item-to-item edges are forbidden. Selecting an item applies the ADS selected treatment to that item, a warm emphasis to every connected capability node, and stronger neutral strokes to their inventory edges while visibly dimming unrelated nodes and inventory edges. It must not recolour verdict semantics or reheat physics unless unique mini-capabilities are structurally revealed.
 
 ### Inventory states and empty graph
 
@@ -145,13 +147,13 @@ Review every candidate as a compact selectable row. Name, room, and quantity are
 
 ### Item inspector
 
-Selecting a saved personal item opens the contextual rail without changing its existing neutral graph highlight. Display name, room, quantity, canonical capabilities, `photo` source, and last-updated time. Edit mode permits name, room, and quantity only. Apply the graph update after the server confirms success, not optimistically.
+Selecting a saved personal item opens the contextual rail without changing its existing selected graph highlight. Display name, room, quantity, canonical capabilities, `photo` source, and last-updated time. Edit mode permits name, room, and quantity only. Apply the graph update after the server confirms success, not optimistically.
 
 Deletion uses a separate explicit confirmation naming the item. A failed save or delete keeps the last confirmed graph state and shows the server hint. Closing the inspector or navigating away discards unsaved edits. Focus enters the inspector predictably and returns to the selected node when it remains available.
 
 ### Node tooltips
 
-Render one viewport-clamped HTML tooltip above the SVG layers. Open it on pointer hover and keyboard focus, support touch inspection, and dismiss it on pointer leave, blur, Escape, view change, node removal, or navigation. Position and visibility are cosmetic state: they never mutate D3 data, restart physics, or move nodes. Connect focused nodes to visible content with `aria-describedby` or equivalent semantics and avoid duplicate screen-reader announcements.
+Render one viewport-clamped HTML tooltip above the SVG layers, styled as an ADS overlay (`elevation.surface.overlay` + `--ds-shadow-overlay`). Open it on pointer hover and keyboard focus, support touch inspection, and dismiss it on pointer leave, blur, Escape, view change, node removal, or navigation. Position and visibility are cosmetic state: they never mutate D3 data, restart physics, or move nodes. Connect focused nodes to visible content with `aria-describedby` or equivalent semantics and avoid duplicate screen-reader announcements.
 
 Tooltip content is compact and type-specific: rooms show item/hotspot counts and their action; unscanned rooms show the scan action; items show room, quantity, capability count, and a short capability preview; shared hubs show owner count and a short owner preview; unique minis show owner and tier; new capabilities show provisional/new status and tier; ghosts show product, price when known, and evaluation phase. Every essential fact and action remains reachable without hover.
 
@@ -159,13 +161,13 @@ Tooltip content is compact and type-specific: rooms show item/hotspot counts and
 
 | Node | Required treatment |
 |---|---|
-| Item node | Adaptive cool-slate circle with a small item dot, centred wrapped item name, optional `+N` unique-capability indicator, thin border, and no glow. Derive its capped diameter from word count, wrapped-line count, longest line, and badge space. Selection neutrally highlights all connected capability nodes and edges. |
-| Capability hub | Neutral pill with a clear lowercase capability label. Degree may change prominence; hot hubs get stronger neutral emphasis, never category colours. Visible only under the hub rules in `PDD.md`. |
-| New capability hub | Green border, restrained green tint, and slightly more weight than a normal hub. No glow. |
-| Ghost | Dashed coral circle showing the wrapped product name, price when known, and `considering`. Size the diameter from the product's word count and longest wrapped line, with a firm maximum so it cannot dominate the graph. It is the only glowing node; keep the glow subtle. |
-| Mini capability | Small, dim, dashed pill hidden until its item expands. Allow one expanded item at a time. |
-| Room | Neutral circle sized by item count with a clear label. A home-level hotspot may carry the only amber badge. The routed room receives announced emphasis. |
-| Unscanned room | Dim, dashed room with a semantic “scan this room” action. |
+| Item node | Blue-subtlest circle (`--item-node`) with soft blue border, small item dot, centred wrapped item name in `--item-node-text`, optional `+N` unique-capability indicator, thin border, and no glow. Derive its capped diameter from word count, wrapped-line count, longest line, and badge space. Selection applies the ADS selected tokens and highlights all connected capability nodes and edges. |
+| Capability hub | Orange-subtlest pill (`--capability-node`) with a clear lowercase capability label in `--capability-node-text`. Degree may change prominence; hot hubs get a heavier `--capability-node-text` stroke, never new colours. Visible only under the hub rules in `PDD.md`. |
+| New capability hub | `--new` border, `--new-soft` tint, and slightly more weight than a normal hub. No glow. |
+| Ghost | Dashed coral circle (`--covered` stroke on `--covered-soft`) showing the wrapped product name, price when known, and `considering`. Size the diameter from the product's word count and longest wrapped line, with a firm maximum so it cannot dominate the graph. It is the only glowing node (`--ghost-glow`); keep the glow subtle. |
+| Mini capability | Small, dim, dashed capability-tinted pill hidden until its item expands. Allow one expanded item at a time. |
+| Room | Neutral `--surface-1` circle with `--border-strong` stroke, sized by item count with a clear label. A home-level hotspot may carry the only amber badge (`--amber` fill, inverse text). The routed room receives announced emphasis. |
+| Unscanned room | Dim, dashed room on `--surface-2` with a semantic "scan this room" action. |
 
 Dashed treatment communicates provisional/not-owned state according to `PDD.md`; do not use arbitrary decorative dashes.
 
@@ -173,19 +175,19 @@ Dashed treatment communicates provisional/not-owned state according to `PDD.md`;
 
 | Edge | Required treatment |
 |---|---|
-| Inventory primary | Neutral graphite, approximately `1.8×` secondary width. |
-| Inventory secondary | Thinner neutral graphite. |
-| Scan | Very faint dashed neutral line, briefly fanning to every relevant node or room. |
+| Inventory primary | Neutral `--edge-inventory`, approximately `1.8×` secondary width. |
+| Inventory secondary | Thinner neutral `--edge-inventory`. |
+| Scan | Very faint dashed `--edge-faint` line, briefly fanning to every relevant node or room. |
 | Covered | Coral `--covered`. |
 | New | Green `--new`, slightly heavier. |
-| Pulse | Animated coral dash-flow for no more than two seconds; a restrained transient halo is permitted only as required by VIS-4. |
-| Cross-room | Rare, thin, dashed, and neutral; only for true cross-domain overlap. |
+| Pulse | Animated coral dash-flow (`--pulse-glow` halo) for no more than two seconds; a restrained transient halo is permitted only as required by VIS-4. |
+| Cross-room | Rare, thin, dashed `--edge-faint`; only for true cross-domain overlap. |
 
 Do not give every edge equal contrast. Inventory structure should recede behind active verdict evidence.
 
 ## Verdict panel
 
-The panel is a compact inspector, not a stack of large cards. Render this exact order:
+The panel is a compact inspector on `--surface-2`, not a stack of large cards. Render this exact order:
 
 1. Product name and price.
 2. `X of Y covered`.
@@ -211,8 +213,8 @@ Row activation resolves its single corresponding edge by ID and pulses exactly t
 
 Actions are:
 
-- Primary: `Skip this purchase`—close the verdict and preserve the impact update in application state.
-- Secondary: `I still need it`—reveal `What's it for? teaches the graph`, then preserve the existing Buy anyway path.
+- Primary: `Skip this purchase`—brand-bold button; close the verdict and preserve the impact update in application state.
+- Secondary: `I still need it`—neutral button; reveal `What's it for? teaches the graph`, then preserve the existing Buy anyway path.
 
 Do not frame the tool as a blocker or remove the Buy path.
 
@@ -279,24 +281,33 @@ Below roughly `720px`:
 - make every important action available without hover;
 - never shrink node labels into illegibility.
 
-On the landing page, stack the three-step sequence and keep the primary graph action visible without horizontal scrolling. Do not create a separate mobile route, graph, or reduced product flow.
+On the landing surface, stack the three-step sequence and keep the primary graph action visible without horizontal scrolling. Do not create a separate mobile route, graph, or reduced product flow.
 
 ## Accessibility
 
 - Use semantic HTML for inputs, buttons, notices, and interactive verdict rows.
-- Make all controls and rows keyboard-operable with a clearly visible neutral focus indicator.
+- Make all controls and rows keyboard-operable with the ADS focus ring (`--focus-ring`), always visible on focus.
 - Give graph actions accessible names where practical and expose equivalent non-canvas controls for essential actions.
 - Make tooltip content available through focus and touch, with Escape dismissal and no hover-only actions.
 - Associate photo-review validation with its candidate fields, announce scan/save status without fake progress, and return focus after cancel or confirmation.
 - Treat route headings as focus destinations and provide a useful not-found page with links to both routes.
 - Do not rely on colour alone for `covered` versus `new`; retain text and shape/style cues.
-- Use adequate touch padding and readable contrast on every graphite surface.
+- Use adequate touch padding and readable contrast on every surface; ADS text tokens on ADS surfaces meet WCAG AA by construction—preserve those pairings.
 - Announce route, error, and result changes appropriately without producing duplicate screen-reader chatter.
 - Respect reduced motion without removing functionality or inspectability.
 
+The ADS MCP server ships accessibility tooling: run `ads_analyze_localhost_a11y` against the dev server (both surfaces) after visual changes, and `ads_analyze_a11y` on new component code.
+
+## Tooling
+
+- **ADS MCP server** — configured in `.mcp.json` (hosted endpoint `https://mcp.atlassian.com/v1/ads/public/mcp`; stdio fallback `npx -y @atlaskit/ads-mcp`). Use `ads_search_tokens` / `ads_get_all_tokens` before choosing any token, `ads_search_components`/`ads_search_icons` for reference recipes, and `ads_plan` for multi-resource lookups. Prefer `ads_*` tools; `atlaskit_*` tools are fallback research only.
+- **`@atlaskit/tokens`** — the only Atlaskit runtime dependency. It provides `setGlobalTheme` and the `--ds-*` custom properties. Do not add Atlaskit component packages; the UI is bespoke D3 + custom components on React 19, and components are adopted token-first.
+- Token values can also be read offline from the installed package (`@atlaskit/tokens/tokens-raw` and `token-names`).
+- Future option: `@atlaskit/eslint-plugin-design-system` if the repo adopts ESLint, to lint token usage in CI.
+
 ## Component guidance
 
-Reuse the current framework, graph library, styling approach, and working application logic. Centralize the tokens above and prefer focused reusable primitives over repeated class strings. Existing equivalents are preferable to parallel components; useful boundaries include:
+Reuse the current framework, graph library, styling approach, and working application logic. Centralize the token bindings above and prefer focused reusable primitives over repeated class strings. Existing equivalents are preferable to parallel components; useful boundaries include:
 
 ```text
 AppShell
@@ -331,10 +342,12 @@ Keep graph, inventory, and verdict data derived, never duplicated. Page componen
 ### Do
 
 - Make the graph the protagonist and the shell a quiet frame.
-- Keep `/` compact and graph-free; keep `/graph` focused on the working graph.
-- Use the exact light neutral ladder, hairlines, compact spacing, and small radii.
-- Use coral only for covered/redundant evidence and green only for genuinely new evidence.
+- Keep the landing surface compact and graph-free; keep the graph surface focused on the working graph.
+- Bind every colour, radius, shadow, and weight to an ADS token through the `:root` properties.
+- Use the coral (red accent) ramp only for covered/redundant evidence and the green accent ramp only for genuinely new evidence.
+- Use brand blue only for interaction chrome: primary buttons, focus, selection, links.
 - Reserve amber for home hotspot badges and glow for the ghost, apart from the brief VIS-4 pulse exception.
+- Pair every raised/overlay surface with its ADS shadow token.
 - Keep panels dense, typography calm, controls compact, and supporting text muted.
 - Preserve force-driven emergence, edge inspectability, offline demo arcs, approval, and both decision actions.
 - Make guest, account loading, empty, error, and populated inventory states visually explicit.
@@ -343,11 +356,13 @@ Keep graph, inventory, and verdict data derived, never duplicated. Page componen
 
 ### Do not
 
-- Do not restore Linear lavender or introduce any third speaking colour.
-- Do not add gradients, glass effects, neon glows, strong grids, excessive shadows, huge type, giant radii, or large floating cards.
-- Do not turn `/graph` into a landing page, dashboard, issue tracker, or competing multi-canvas view; do not let `/` grow into a generic marketing site.
+- Do not introduce any speaking colour beyond coral and green; brand blue never carries meaning beyond interaction chrome.
+- Do not use ADS danger/warning ramps for banners or graph elements—red belongs to covered evidence alone.
+- Do not add gradients, glass effects, neon glows, strong grids, decorative shadows, huge type, giant radii, or large floating cards.
+- Do not turn the graph surface into a landing page, dashboard, or issue tracker; do not let the landing surface grow into a generic marketing site.
 - Do not make all nodes or edges equally loud.
 - Do not hardcode positions, domains, scores, percentages, or demo-only visual outcomes.
 - Do not reheat physics for hover, highlighting, selection, or edge pulse.
 - Do not persist raw images, provider output, confidence, evidence, warnings, or review drafts; do not expose capability editing or manual item creation.
 - Do not add idle node motion, arbitrary interactions, a browser extension, persistent override learning, or other remaining `SCP-1` scope.
+- Do not add Atlaskit component packages or copy raw hex values out of ADS documentation—consume tokens.
