@@ -1,14 +1,23 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("./_lib/auth", () => ({
+  authenticateEvaluateRequest: vi.fn(),
+}));
 
 vi.mock("./_lib/handler", () => ({
   handleEvaluate: vi.fn(),
 }));
 
 import evaluate from "./evaluate";
+import { authenticateEvaluateRequest } from "./_lib/auth";
 import { handleEvaluate } from "./_lib/handler";
 
 describe("POST /api/evaluate production wrapper", () => {
+  beforeEach(() => {
+    vi.mocked(authenticateEvaluateRequest).mockResolvedValue({ ok: true });
+  });
+
   it("returns an API-5 next step when the handler fails unexpectedly", async () => {
     vi.mocked(handleEvaluate).mockRejectedValueOnce(new Error("unexpected"));
     const json = vi.fn();

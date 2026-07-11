@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { authenticateEvaluateRequest } from "./_lib/auth";
 import { handleEvaluate } from "./_lib/handler";
 
 /** API-1: the single endpoint. POST /api/evaluate { text } */
@@ -14,6 +15,12 @@ export default async function evaluate(
   }
 
   try {
+    const authentication = await authenticateEvaluateRequest(request);
+    if (!authentication.ok) {
+      response.status(authentication.status).json(authentication.body);
+      return;
+    }
+
     const forwarded = request.headers["x-forwarded-for"];
     const clientIp =
       (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(",")[0].trim() ??
