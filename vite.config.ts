@@ -49,8 +49,30 @@ function evaluateDevApi(): Plugin {
   };
 }
 
+/**
+ * Vite's SPA fallback would otherwise serve index.html for unknown /api paths.
+ * Keep browser-route fallback behavior without turning API failures into HTML.
+ */
+function unknownApiGuard(): Plugin {
+  return {
+    name: "unknown-api-guard",
+    configureServer(server) {
+      server.middlewares.use("/api", (_request, response) => {
+        response.statusCode = 404;
+        response.setHeader("content-type", "application/json");
+        response.end(
+          JSON.stringify({
+            error: "API route not found",
+            hint: "Check the request path and method.",
+          }),
+        );
+      });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), evaluateDevApi()],
+  plugins: [react(), evaluateDevApi(), unknownApiGuard()],
   server: {
     host: "127.0.0.1",
   },

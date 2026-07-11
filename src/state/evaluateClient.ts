@@ -6,6 +6,7 @@ import type {
   DemoCacheFile,
   EvaluateResult,
   InventoryFile,
+  Item,
 } from "../lib/types";
 
 const demoCache = demoCacheFile as unknown as DemoCacheFile;
@@ -28,12 +29,15 @@ export class EvaluateFailure extends Error {
  * network hop — scored client-side through the same scoreProduct the server
  * uses (ALG-10). Everything else goes to POST /api/evaluate (API-1).
  */
-export async function evaluate(text: string): Promise<EvaluateResult> {
+export async function evaluate(
+  text: string,
+  items: Item[] = inventory.items,
+): Promise<EvaluateResult> {
   const entry = demoCache.entries[norm(text)];
   if (entry) {
     return {
       ...entry,
-      verdict: scoreProduct(entry, inventory.items),
+      verdict: scoreProduct(entry, items),
       cached: true,
     };
   }
@@ -66,5 +70,11 @@ export async function evaluate(text: string): Promise<EvaluateResult> {
       failed?.hint ?? "tap an example — those never touch the network",
     );
   }
-  return payload as EvaluateResult;
+  const result = payload as EvaluateResult;
+  return {
+    ...result,
+    // The server remains authoritative, while client-side rescoring keeps the
+    // displayed graph aligned with the inventory that was actually loaded.
+    verdict: scoreProduct(result, items),
+  };
 }
