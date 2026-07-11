@@ -155,29 +155,21 @@ migrations, isolated database tests, preview branching, webhook retention, and
 rollback procedures are documented in
 [docs/neon-inventory.md](./docs/neon-inventory.md).
 
-### Pinecone vector store
+### Embedding cache
 
-Capability canonicalization can persist its vocabulary vectors in a Pinecone
-serverless index instead of re-embedding them on every cold start. The
-embedding model stays the pinned OpenAI one, so similarity scores and the
-0.83 snap threshold are unchanged; vectors live in a namespace named
-`OPENAI_EMBED_MODEL@OPENAI_EMBED_REVISION`, so bumping the revision
-regenerates them.
+Capability canonicalization persists its vocabulary vectors in a pgvector
+`capability_embeddings` table in the same Neon database instead of
+re-embedding them on every cold start. The embedding model stays the pinned
+OpenAI one, so similarity scores and the 0.83 snap threshold are unchanged;
+rows are partitioned by `OPENAI_EMBED_MODEL@OPENAI_EMBED_REVISION`, so bumping
+the revision regenerates them. Every nearest-neighbor query is filtered to the
+active viewer's vocabulary, so the shared cache never snaps across accounts.
 
-```bash
-PINECONE_API_KEY=...
-PINECONE_INDEX=functiongraph-vocab
-```
-
-Create the index once (1536-dim, cosine, serverless on AWS `us-east-1`):
-
-```bash
-npm run pinecone:setup
-```
-
-`PINECONE_INDEX` is the feature switch. Leaving it unset keeps snapping fully
-in-process, and any Pinecone outage falls back to the in-process path, so live
-evaluation never depends on the vector store being reachable.
+The table ships with the drizzle migrations (`npm run db:migrate`); there is
+no separate setup step. `DATABASE_URL` is the switch: leaving it unset keeps
+snapping fully in-process, and any database failure falls back to the
+in-process path, so live evaluation never depends on the cache being
+reachable.
 
 For Vercel, deploy the repository as a Vite project, keep the committed build
 command (`npm run db:migrate && npm run build`), set the output directory to

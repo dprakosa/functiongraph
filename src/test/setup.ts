@@ -4,15 +4,15 @@ import { afterEach } from "vitest";
 
 afterEach(cleanup);
 
-// Tests must not inherit a live vector-store configuration from the shell
-// (PINECONE_API_KEY is common ambient state); suites opt in via vi.stubEnv.
+// Tests must not inherit a live database from the shell (DATABASE_URL doubles
+// as the ALG-2 embedding-cache switch); suites opt in via vi.stubEnv, and the
+// integration runner re-sets it after this file runs.
 // setup.ts compiles under the browser tsconfig, so reach process via globalThis.
 const nodeProcess = (
   globalThis as { process?: { env: Record<string, string | undefined> } }
 ).process;
 if (nodeProcess) {
-  delete nodeProcess.env.PINECONE_API_KEY;
-  delete nodeProcess.env.PINECONE_INDEX;
+  delete nodeProcess.env.DATABASE_URL;
 }
 
 class ResizeObserverMock implements ResizeObserver {

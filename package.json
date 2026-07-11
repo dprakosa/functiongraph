@@ -10,7 +10,6 @@
     "db:migrate": "drizzle-kit migrate",
     "test:db": "node scripts/neon-test-db.mjs",
     "preview": "vite preview",
-    "pinecone:setup": "node --env-file=.env scripts/pinecone-setup.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },

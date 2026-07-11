@@ -86,8 +86,10 @@ MUST NOT substitute synonyms.
 - **DM-7** The guest inventory and demo decomposition cache are versioned JSON.
   Confirmed personal inventory MUST persist in Neon Postgres and every row
   MUST carry its owning Clerk user id. ALG-2 canonicalization vectors MAY
-  persist in a pinned Pinecone serverless index (§14, 2026-07-11). No browser
-  may receive Neon credentials or query either store directly.
+  persist in a pgvector `capability_embeddings` cache in the same Neon
+  database, partitioned by embed model + revision and always queried filtered
+  to the active vocabulary (§14, 2026-07-12). No browser may receive Neon
+  credentials or query the database directly.
 - **DM-8** A photo scan candidate is provisional:
   `{ id, name, quantity|null, suggestedDomain, confidence, evidence,
   capabilities }`. `confidence` is a review priority, not a calibrated
@@ -416,7 +418,7 @@ then cools; tooltip and selection highlights remain cosmetic.
   the owner deletes the item. Deleting a Clerk account MUST trigger deletion of
   all its inventory rows. Raw images, normalized images, data URLs, provider
   output, candidate evidence, confidence, warnings, and review drafts are
-  ephemeral and MUST NOT enter Neon, Pinecone, analytics, logs, or browser
+  ephemeral and MUST NOT enter Neon, analytics, logs, or browser
   persistence.
 - **NFR-8 (routed accessibility)** Landing, graph, not-found, inventory loading,
   empty, error, review, inspector, and tooltip states MUST be keyboard and
@@ -480,8 +482,9 @@ then cools; tooltip and selection highlights remain cosmetic.
 
 React + d3-force · light node-editor workspace ·
 `gpt-4.1-mini` (pinned snapshot) with structured outputs ·
-`text-embedding-3-small` · Pinecone serverless (standard 1536-dim cosine
-index) persisting vocabulary vectors, in-process fallback ·
+`text-embedding-3-small` · Neon pgvector (1536-dim cosine
+`capability_embeddings` table) caching vocabulary vectors, in-process
+fallback ·
 Sharp image normalization · Clerk authentication · Neon Postgres personal
 inventory through Vercel serverless functions · browser-history routes with a
 Vercel SPA fallback that excludes `/api/**` · JSON guest seed data (36 items:
@@ -515,7 +518,8 @@ per SM-3 · caps per product 3–8 · input 3–1500 chars.
 | Photo candidates require review | visual identification and approximate counts are uncertain; only candidates explicitly selected and reviewed by the user may be confirmed |
 | Scope changes use sign-off + decision log | schedule and project-cost estimates are not normative product requirements; product price/delta economics remain normative in ALG-7 and DEM-1 |
 | Four-room, 36-item seed with per-room hubs | human sign-off selected a realistic balanced home; a local top-8 hub budget keeps every room informative without letting the largest room consume global visibility |
-| Pinecone vector store for ALG-2 vectors (human sign-off, 2026-07-11) | vocabulary vectors persist in a standard serverless index and survive cold starts; the embedding model stays the pinned OpenAI one, so cosine scores and the 0.83 snap threshold keep their calibration; namespaces are partitioned by embed model + revision, structurally enforcing ALG-2 regeneration; any Pinecone failure falls back to in-process snapping, so the live path never gains an availability dependency; guest inventory and demo cache remain versioned JSON while confirmed personal inventory uses Neon |
+| Pinecone vector store for ALG-2 vectors (superseded 2026-07-12) | initial sign-off persisted vocabulary vectors in a standard serverless index; the Neon pgvector decision below replaces that store while keeping its calibration and fallback guarantees |
+| Neon pgvector embedding cache replaces Pinecone (human sign-off, 2026-07-12) | ALG-2 snapping is a top-1 exact cosine search over one account's vocabulary, which fits a single SQL query against a `capability_embeddings` table in the inventory database; every query filters to the active vocabulary, structurally enforcing ALG-1/ALG-2 scoping where the shared Pinecone namespace could snap to another inventory's names; rows stay partitioned by embed model + revision, enforcing ALG-2 regeneration; vectors branch with Neon preview databases instead of sharing one mutable index; any database failure still falls back to in-process snapping, and the pinned embedding model and 0.83 threshold keep their calibration |
 | Public `/` and graph `/graph` routes (human sign-off, 2026-07-11) | a compact landing page can explain the capability-level value and privacy boundary without displacing the graph, while a stable graph URL supports direct links and browser navigation |
 | Guest demo versus empty personal inventory (human sign-off, 2026-07-11) | guests need the reliable bundled 36-item proof; copying or silently falling back to that data for an account would misrepresent what the person owns, so every new account starts empty |
 | Clerk-scoped Neon inventory (human sign-off, 2026-07-11) | confirmed items must survive reload and remain isolated per account; all ownership comes from verified Clerk sessions, while Neon credentials and tenant queries remain server-side |
