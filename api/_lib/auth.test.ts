@@ -21,6 +21,11 @@ const validConfig = {
 
 const SESSION_TOKEN =
   "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9." +
+  "eyJpc3MiOiJodHRwczovL2V4YW1wbGUuY2xlcmsuYWNjb3VudHMuZGV2Iiwic3ViIjoidXNlcl90ZXN0IiwiZXhwIjo5OTk5OTk5OTk5LCJhenAiOiJodHRwczovL2FwcC5leGFtcGxlLmNvbSJ9." +
+  "c2lnbmF0dXJl";
+
+const SERVER_SESSION_TOKEN =
+  "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9." +
   "eyJpc3MiOiJodHRwczovL2V4YW1wbGUuY2xlcmsuYWNjb3VudHMuZGV2Iiwic3ViIjoidXNlcl90ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ." +
   "c2lnbmF0dXJl";
 
@@ -206,6 +211,61 @@ describe("authenticateEvaluateRequest", () => {
         "http://localhost:5173",
       ],
     });
+  });
+
+  it("accepts a Backend API bearer session without azp while keeping full token verification", async () => {
+    mocks.authenticateRequest.mockResolvedValue({
+      isAuthenticated: true,
+      tokenType: "session_token",
+      reason: null,
+      toAuth: () => ({ isAuthenticated: true, userId: "user_test" }),
+    });
+
+    const outcome = await authenticateEvaluateRequest(
+      request({
+        headers: {
+          ...defaultHeaders,
+          authorization: `Bearer ${SERVER_SESSION_TOKEN}`,
+          cookie: undefined,
+        },
+      }),
+    );
+
+    expect(outcome).toEqual({ ok: true, userId: "user_test" });
+    expect(mocks.authenticateRequest).toHaveBeenCalledWith(
+      expect.any(Request),
+      { acceptsToken: "session_token" },
+    );
+  });
+
+  it("still enforces authorized parties for cookie sessions", async () => {
+    mocks.authenticateRequest.mockResolvedValue({
+      isAuthenticated: true,
+      tokenType: "session_token",
+      reason: null,
+      toAuth: () => ({ isAuthenticated: true, userId: "user_test" }),
+    });
+
+    await authenticateEvaluateRequest(
+      request({
+        headers: {
+          ...defaultHeaders,
+          authorization: undefined,
+          cookie: `__session=${SERVER_SESSION_TOKEN}`,
+        },
+      }),
+    );
+
+    expect(mocks.authenticateRequest).toHaveBeenCalledWith(
+      expect.any(Request),
+      {
+        acceptsToken: "session_token",
+        authorizedParties: [
+          "https://app.example.com",
+          "http://localhost:5173",
+        ],
+      },
+    );
   });
 
   it.each([

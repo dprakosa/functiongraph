@@ -33,16 +33,21 @@ describe("POST /api/evaluate production wrapper", () => {
     vi.mocked(handleEvaluate).mockRejectedValueOnce(new Error("unexpected"));
     const json = vi.fn();
     const status = vi.fn(() => ({ json }));
+    const setHeader = vi.fn();
     const request = {
       method: "POST",
       headers: {},
       socket: { remoteAddress: "test-ip" },
       body: { text: "test product" },
     } as unknown as VercelRequest;
-    const response = { status } as unknown as VercelResponse;
+    const response = { status, setHeader } as unknown as VercelResponse;
 
     await evaluate(request, response);
 
+    expect(setHeader).toHaveBeenCalledWith(
+      "Cache-Control",
+      "private, no-store",
+    );
     expect(status).toHaveBeenCalledWith(500);
     expect(json).toHaveBeenCalledWith({
       error: "evaluation failed unexpectedly",

@@ -9,6 +9,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "test:db": "node scripts/neon-test-db.mjs",
+    "test:photo:live": "node scripts/photo-inventory-smoke.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"

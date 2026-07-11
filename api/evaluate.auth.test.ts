@@ -50,10 +50,12 @@ function request(
 function response() {
   const json = vi.fn();
   const status = vi.fn(() => ({ json }));
+  const setHeader = vi.fn();
   return {
-    response: { status } as unknown as VercelResponse,
+    response: { status, setHeader } as unknown as VercelResponse,
     status,
     json,
+    setHeader,
   };
 }
 
@@ -72,6 +74,10 @@ describe("POST /api/evaluate authentication boundary", () => {
 
     await evaluate(request({ method: "GET" }), outgoing.response);
 
+    expect(outgoing.setHeader).toHaveBeenCalledWith(
+      "Cache-Control",
+      "private, no-store",
+    );
     expect(authenticateEvaluateRequest).not.toHaveBeenCalled();
     expect(listInventoryItems).not.toHaveBeenCalled();
     expect(handleEvaluate).not.toHaveBeenCalled();
@@ -98,6 +104,10 @@ describe("POST /api/evaluate authentication boundary", () => {
 
     await evaluate(incoming, outgoing.response);
 
+    expect(outgoing.setHeader).toHaveBeenCalledWith(
+      "Cache-Control",
+      "private, no-store",
+    );
     expect(authenticateEvaluateRequest).toHaveBeenCalledWith(incoming);
     expect(handleEvaluate).not.toHaveBeenCalled();
     expect(outgoing.status).toHaveBeenCalledWith(401);
