@@ -10,6 +10,7 @@ import * as live from "./live";
 import {
   handleEvaluate as handleEvaluateWithItems,
   resetEvaluateMemoForTests,
+  resetEvaluateRateLimitForTests,
 } from "./handler";
 
 const guestItems = (inventoryFile as InventoryFile).items;
@@ -21,6 +22,8 @@ function handleEvaluate(rawBody: unknown, clientIp: string, items = guestItems) 
 describe("POST /api/evaluate handler", () => {
   afterEach(() => {
     resetEvaluateMemoForTests();
+    resetEvaluateRateLimitForTests();
+    vi.useRealTimers();
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
@@ -114,6 +117,94 @@ describe("POST /api/evaluate handler", () => {
     expect((second.body as EvaluateResult).verdict.rows[0].bestCoverer).toBe(
       "Second kettle",
     );
+  });
+
+  it("charges only live misses to a time-bounded per-IP rate limit", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-12T00:00:00.000Z"));
+    const decompose = vi.spyOn(live, "decomposeLive").mockImplementation(
+      async (text) => ({
+        name: text,
+        price: null,
+        capabilities: [{ name: "heats water", tier: "primary" }],
+        altSuggestion: null,
+      }),
+    );
+
+    const first = await handleEvaluate(
+      { text: "uncached memoized rate product" },
+      "rate-ip",
+    );
+    const memoHit = await handleEvaluate(
+      { text: "uncached memoized rate product" },
+      "rate-ip",
+    );
+    for (let index = 1; index < 10; index += 1) {
+      const result = await handleEvaluate(
+        { text: `uncached live product ${index}` },
+        "rate-ip",
+      );
+      expect(result.status).toBe(200);
+    }
+
+    for (let index = 0; index < 5; index += 1) {
+      const demo = await handleEvaluate(
+        { text: "Convection countertop oven — $129" },
+        "rate-ip",
+      );
+      expect(demo.status).toBe(200);
+    }
+
+    const limited = await handleEvaluate(
+      { text: "uncached eleventh live product" },
+      "rate-ip",
+    );
+    const otherIp = await handleEvaluate(
+      { text: "uncached product from another device" },
+      "other-ip",
+    );
+
+    expect(first.status).toBe(200);
+    expect((first.body as EvaluateResult).cached).toBe(false);
+    expect(memoHit.status).toBe(200);
+    expect((memoHit.body as EvaluateResult).cached).toBe(true);
+    expect(decompose).toHaveBeenCalledTimes(11);
+    expect(limited).toEqual({
+      status: 429,
+      body: {
+        error: "too many live evaluations from this device",
+        hint: expect.stringContaining("wait a minute"),
+      },
+    });
+    expect(otherIp.status).toBe(200);
+
+    vi.setSystemTime(new Date("2026-07-12T00:01:00.001Z"));
+    const afterWindow = await handleEvaluate(
+      { text: "uncached product after the rate window" },
+      "rate-ip",
+    );
+    expect(afterWindow.status).toBe(200);
+    expect(decompose).toHaveBeenCalledTimes(12);
+  });
+
+  it("returns a sanitized actionable 422 for an unreadable live product", async () => {
+    vi.spyOn(live, "decomposeLive").mockRejectedValue(
+      new Error("private provider response"),
+    );
+
+    const result = await handleEvaluate(
+      { text: "uncached unreadable live product" },
+      "failure-ip",
+    );
+
+    expect(result).toEqual({
+      status: 422,
+      body: {
+        error: "couldn't read a product out of that",
+        hint: expect.stringContaining("describe one product"),
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain("private provider response");
   });
 
   it("rejects too-short input with a hint, never a crash (API-5)", async () => {
