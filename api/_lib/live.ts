@@ -1,3 +1,4 @@
+import { capSlug } from "../../src/lib/text";
 import { deriveVocabulary } from "../../src/lib/vocabulary";
 import type {
   Capability,
@@ -5,6 +6,15 @@ import type {
   ProductDecomposition,
   Tier,
 } from "../../src/lib/types";
+import { LiveUnavailableError } from "./errors";
+import {
+  fetchExistingIds,
+  queryNearest,
+  readPineconeConfig,
+  upsertVectors,
+  vectorNamespace,
+  type PineconeConfig,
+} from "./pinecone";
 
 /**
  * Live evaluation path (API-2 step 3): structured LLM decomposition (API-4)
@@ -12,7 +22,7 @@ import type {
  * (API-6, NFR-5); keys never leave the server.
  */
 
-export class LiveUnavailableError extends Error {}
+export { LiveUnavailableError } from "./errors";
 
 /** ALG-2 / §13: snap threshold 0.83. */
 export const SNAP_THRESHOLD = 0.83;
@@ -232,6 +242,9 @@ export async function canonicalizeCapabilityGroups(
   config: LiveConfig,
   limits: { min: number; max: number } = { min: 1, max: 6 },
 ): Promise<Capability[][]> {
+  // Read up front so a half-configured deployment fails loudly on every live
+  // call, not only once an unmatched capability appears.
+  const pineconeConfig = readPineconeConfig();
   const vocabularyNames = [...deriveVocabulary(items).keys()];
   const vocabularySet = new Set(vocabularyNames);
   const normalized = groups.map((group) =>
@@ -250,28 +263,54 @@ export async function canonicalizeCapabilityGroups(
   ];
 
   if (unmatchedNames.length > 0 && vocabularyNames.length > 0) {
-    const [vocab, unmatchedVectors] = await Promise.all([
-      vocabularyVectors(
-        vocabularyNames,
-        config.apiKey,
-        config.embedModel,
-        config.embedRevision,
-      ),
-      embed(unmatchedNames, config.apiKey, config.embedModel),
-    ]);
-    const snapped = new Map<string, string>();
-    unmatchedNames.forEach((name, index) => {
-      let bestScore = -1;
-      let bestName: string | null = null;
-      vocab.vectors.forEach((vector, vocabIndex) => {
-        const score = cosine(unmatchedVectors[index], vector);
-        if (score > bestScore) {
-          bestScore = score;
-          bestName = vocab.names[vocabIndex];
-        }
+    const unmatchedVectorsPromise = embed(
+      unmatchedNames,
+      config.apiKey,
+      config.embedModel,
+    );
+
+    let snapped: Map<string, string> | null = null;
+    if (pineconeConfig) {
+      try {
+        snapped = await snapWithPinecone(
+          pineconeConfig,
+          vocabularyNames,
+          unmatchedNames,
+          unmatchedVectorsPromise,
+          config,
+        );
+      } catch (error) {
+        // The vector store persists what the in-process path can always
+        // recompute; an outage must not take down live evaluation.
+        console.warn("pinecone unavailable — snapping in-process", error);
+      }
+    }
+
+    if (!snapped) {
+      const [vocab, unmatchedVectors] = await Promise.all([
+        vocabularyVectors(
+          vocabularyNames,
+          config.apiKey,
+          config.embedModel,
+          config.embedRevision,
+        ),
+        unmatchedVectorsPromise,
+      ]);
+      snapped = new Map<string, string>();
+      unmatchedNames.forEach((name, index) => {
+        let bestScore = -1;
+        let bestName: string | null = null;
+        vocab.vectors.forEach((vector, vocabIndex) => {
+          const score = cosine(unmatchedVectors[index], vector);
+          if (score > bestScore) {
+            bestScore = score;
+            bestName = vocab.names[vocabIndex];
+          }
+        });
+        if (bestName && bestScore >= SNAP_THRESHOLD) snapped!.set(name, bestName);
       });
-      if (bestName && bestScore >= SNAP_THRESHOLD) snapped.set(name, bestName);
-    });
+    }
+
     normalized.flat().forEach((capability) => {
       capability.name = snapped.get(capability.name) ?? capability.name;
     });
@@ -280,6 +319,87 @@ export async function canonicalizeCapabilityGroups(
   return normalized.map((group) =>
     finalizeCapabilities(group, limits.min, limits.max),
   );
+}
+
+/**
+ * ALG-2 step 3 against the Pinecone index: make sure every vocabulary vector
+ * is persisted, then snap each unmatched name to its nearest neighbor. The
+ * index shares the pinned embedding model and cosine metric with the
+ * in-process path, so scores and the 0.83 threshold are interchangeable.
+ */
+async function snapWithPinecone(
+  pineconeConfig: PineconeConfig,
+  vocabularyNames: string[],
+  unmatchedNames: string[],
+  unmatchedVectorsPromise: Promise<number[][]>,
+  config: LiveConfig,
+): Promise<Map<string, string>> {
+  const namespace = vectorNamespace(config.embedModel, config.embedRevision);
+  const [, unmatchedVectors] = await Promise.all([
+    ensureVocabularyVectors(pineconeConfig, namespace, vocabularyNames, config),
+    unmatchedVectorsPromise,
+  ]);
+  const nearest = await Promise.all(
+    unmatchedVectors.map((vector) =>
+      queryNearest(pineconeConfig, namespace, vector),
+    ),
+  );
+  const snapped = new Map<string, string>();
+  nearest.forEach((match, index) => {
+    if (match && match.score >= SNAP_THRESHOLD) {
+      snapped.set(unmatchedNames[index], match.name);
+    }
+  });
+  return snapped;
+}
+
+/**
+ * Vocabulary vectors are written once per namespace and reused across cold
+ * starts; only names missing from the index are embedded. Memoized per
+ * process like vocabularyVectorsCache so warm instances skip the existence
+ * check. The namespace embeds the model + revision, so the key can never
+ * alias vectors across embedding deployments.
+ */
+const ensuredVocabularyCache = new Map<string, Promise<void>>();
+
+function ensureVocabularyVectors(
+  pineconeConfig: PineconeConfig,
+  namespace: string,
+  vocabularyNames: string[],
+  config: LiveConfig,
+): Promise<void> {
+  const cacheKey = JSON.stringify([
+    pineconeConfig.indexName,
+    namespace,
+    vocabularyNames,
+  ]);
+  let ensured = ensuredVocabularyCache.get(cacheKey);
+  if (!ensured) {
+    ensured = (async () => {
+      const existing = await fetchExistingIds(
+        pineconeConfig,
+        namespace,
+        vocabularyNames.map(capSlug),
+      );
+      const missing = vocabularyNames.filter(
+        (name) => !existing.has(capSlug(name)),
+      );
+      if (missing.length === 0) return;
+      const vectors = await embed(missing, config.apiKey, config.embedModel);
+      await upsertVectors(
+        pineconeConfig,
+        namespace,
+        missing.map((name, index) => ({
+          id: capSlug(name),
+          values: vectors[index],
+          metadata: { name },
+        })),
+      );
+    })();
+    ensured.catch(() => ensuredVocabularyCache.delete(cacheKey));
+    ensuredVocabularyCache.set(cacheKey, ensured);
+  }
+  return ensured;
 }
 
 function cosine(a: number[], b: number[]): number {

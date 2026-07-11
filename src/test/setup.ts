@@ -4,6 +4,17 @@ import { afterEach } from "vitest";
 
 afterEach(cleanup);
 
+// Tests must not inherit a live vector-store configuration from the shell
+// (PINECONE_API_KEY is common ambient state); suites opt in via vi.stubEnv.
+// setup.ts compiles under the browser tsconfig, so reach process via globalThis.
+const nodeProcess = (
+  globalThis as { process?: { env: Record<string, string | undefined> } }
+).process;
+if (nodeProcess) {
+  delete nodeProcess.env.PINECONE_API_KEY;
+  delete nodeProcess.env.PINECONE_INDEX;
+}
+
 class ResizeObserverMock implements ResizeObserver {
   readonly root = null;
   readonly rootMargin = "0px";

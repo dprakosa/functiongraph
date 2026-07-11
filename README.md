@@ -127,6 +127,30 @@ write to the inventory or any database. See
 [docs/inventory-scan.md](./docs/inventory-scan.md) for its request, response,
 privacy, size, and operational contracts.
 
+### Pinecone vector store
+
+Capability canonicalization can persist its vocabulary vectors in a Pinecone
+serverless index instead of re-embedding them on every cold start. The
+embedding model stays the pinned OpenAI one, so similarity scores and the
+0.83 snap threshold are unchanged; vectors live in a namespace named
+`OPENAI_EMBED_MODEL@OPENAI_EMBED_REVISION`, so bumping the revision
+regenerates them.
+
+```bash
+PINECONE_API_KEY=...
+PINECONE_INDEX=functiongraph-vocab
+```
+
+Create the index once (1536-dim, cosine, serverless on AWS `us-east-1`):
+
+```bash
+npm run pinecone:setup
+```
+
+`PINECONE_INDEX` is the feature switch. Leaving it unset keeps snapping fully
+in-process, and any Pinecone outage falls back to the in-process path, so live
+evaluation never depends on the vector store being reachable.
+
 For Vercel, deploy the repository as a Vite project, use `npm run build`, set
 the output directory to `dist`, and configure the environment variables above.
 `api/evaluate.ts` and `api/inventory/scan.ts` deploy as serverless functions.

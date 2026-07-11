@@ -80,7 +80,9 @@ MUST NOT substitute synonyms.
 - **DM-6** `Row { capability, capSlug, tier, covered, bestCoverer,
   covererCount, weight }` — `capSlug` = lowercase, non-alphanumerics
   collapsed to single hyphens.
-- **DM-7** Storage is versioned JSON (inventory, demo cache). No database.
+- **DM-7** Storage is versioned JSON (inventory, demo cache). ALG-2
+  canonicalization vectors MAY persist in a pinned Pinecone serverless index
+  (§14, 2026-07-11); no other database.
 - **DM-8** A photo scan candidate is provisional:
   `{ id, name, quantity|null, suggestedDomain, confidence, evidence,
   capabilities }`. `confidence` is a review priority, not a calibrated
@@ -360,7 +362,8 @@ the ceiling — learnable in one viewing.
 
 - **SCP-1 (out of scope — roadmap/slides only)** browser extension · camera
   UI · scan confirmation/persistence · persistent override learning · capability instance counts ·
-  categories beyond kitchen + electronics + garage + bathroom · databases · split-view routing.
+  categories beyond kitchen + electronics + garage + bathroom · general-purpose
+  databases beyond the ALG-2 vector index (DM-7) · split-view routing.
   Agents MUST NOT implement these without explicit human sign-off recorded in
   the decision log.
 - **SCP-2 (degradation ladder, cut in order)** (1) home level + Beat 2 →
@@ -378,7 +381,9 @@ the ceiling — learnable in one viewing.
 
 React Flow (@xyflow/react v12) + d3-force · dark node-editor theme ·
 `gpt-4.1-mini` (pinned snapshot) with structured outputs ·
-`text-embedding-3-small` · Sharp image normalization · Vercel-shaped repo with
+`text-embedding-3-small` · Pinecone serverless (standard 1536-dim cosine
+index) persisting vocabulary vectors, in-process fallback ·
+Sharp image normalization · Vercel-shaped repo with
 two serverless endpoints · JSON seed data (36 items: 13 kitchen, 8 electronics,
 8 garage, and 7 bathroom, including
 the planted `boils water` and `keeps food warm` weak links and the
@@ -410,6 +415,7 @@ per SM-3 · caps per product 3–8 · input 3–1500 chars.
 | Photo candidates require review | visual identification and approximate counts are uncertain; confirmation and persistence remain future work |
 | Scope changes use sign-off + decision log | schedule and project-cost estimates are not normative product requirements; product price/delta economics remain normative in ALG-7 and DEM-1 |
 | Four-room, 36-item seed with per-room hubs | human sign-off selected a realistic balanced home; a local top-8 hub budget keeps every room informative without letting the largest room consume global visibility |
+| Pinecone vector store for ALG-2 vectors (human sign-off, 2026-07-11) | vocabulary vectors persist in a standard serverless index and survive cold starts; the embedding model stays the pinned OpenAI one, so cosine scores and the 0.83 snap threshold keep their calibration; namespaces are partitioned by embed model + revision, structurally enforcing ALG-2 regeneration; any Pinecone failure falls back to in-process snapping, so the live path never gains an availability dependency; inventory and demo cache remain versioned JSON |
 
 ---
 
