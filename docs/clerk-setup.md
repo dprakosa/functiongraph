@@ -62,6 +62,61 @@ CLERK_AUTHORIZED_PARTIES=https://functiongraph.example.com,https://functiongraph
 
 Replace every example origin with the exact deployed origin visible in the browser. Vercel environment changes apply only to a subsequent deployment, so redeploy after adding or changing a key or authorized party. Because wildcard parties are not accepted, prefer a stable preview/branch alias when repeated preview testing is needed, or update the exact preview origin and redeploy.
 
+## Production backend rollout
+
+Use a Clerk production instance for Production; do not copy the Preview
+development keys. The browser publishable key, server publishable key, server
+secret key, and webhook signing secret must all come from that production
+instance. Configure secrets in Vercel and Clerk directly—never in a commit,
+issue, terminal transcript, or browser bundle.
+
+For this repository, perform the first Production cutover in this order:
+
+1. In the Vercel Production environment, configure
+   `VITE_CLERK_PUBLISHABLE_KEY`, `CLERK_PUBLISHABLE_KEY`, and
+   `CLERK_SECRET_KEY` from the same Clerk production instance.
+2. Set `CLERK_AUTHORIZED_PARTIES` to the exact canonical origin,
+   `https://functiongraph.vercel.app`. Add a custom-domain origin only after
+   that domain is assigned to the project.
+3. Configure `OPENAI_API_KEY` together with the pinned `OPENAI_MODEL`,
+   `OPENAI_VISION_MODEL`, `OPENAI_EMBED_MODEL`, and
+   `OPENAI_EMBED_REVISION` values from [`.env.example`](../.env.example).
+4. In Clerk, create a Production webhook subscribed only to `user.deleted` at
+   `https://functiongraph.vercel.app/api/webhooks/clerk`. Store its signing
+   secret as the Vercel Production `CLERK_WEBHOOK_SIGNING_SECRET` variable.
+5. In Vercel Project Settings → Environments → Production → Branch Tracking,
+   select `main`. Vercel currently exposes this setting in the dashboard, not
+   through the supported project CLI commands.
+6. Trigger a fresh Production deployment from `main`. The committed build
+   command applies the forward-only Drizzle migrations, including pgvector,
+   before building the application.
+
+Do not promote a Preview deployment to work around missing Production
+configuration: Preview deployments use development Clerk credentials and may
+use a branch-specific Neon database. A Production deployment must be built
+with the Production environment variables and the production Neon connection.
+
+After deployment, verify all of the following without printing any key, token,
+connection string, image, or provider response:
+
+- the deployment is `READY`, targets Production, and resolves at
+  `https://functiongraph.vercel.app`;
+- signed-out `POST /api/evaluate`, `GET /api/inventory/items`, and
+  `POST /api/inventory/scan` requests return sanitized JSON `401` responses;
+- a signed-in browser can run the cached evaluation probe below and load its
+  own inventory without a `503`;
+- the browser bundle contains no Clerk secret, authorized-party list, OpenAI
+  key, Neon URL, or webhook secret;
+- a disposable Clerk production user deletion delivers a successful
+  `user.deleted` webhook, and Vercel runtime logs contain no payload or secret;
+  and
+- Vercel runtime errors show no migration, pgvector, Clerk verification, or
+  provider-configuration failures.
+
+If any check fails, keep the prior Production deployment available for
+rollback. Fix environment configuration and redeploy rather than weakening an
+authentication, tenant, schema, or model-pinning check.
+
 ## Guest demo and live evaluation
 
 The three try-these chips are bundled in the client:
