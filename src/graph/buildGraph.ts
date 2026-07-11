@@ -1,0 +1,327 @@
+import {
+  deriveDomains,
+  deriveHubs,
+  ghostEdgeId,
+  inventoryEdgeId,
+} from "../lib/graphDerive";
+import { specificityWeight } from "../lib/scoring";
+import { deriveVocabulary } from "../lib/vocabulary";
+import { capSlug } from "../lib/text";
+import { copy } from "../lib/copy";
+import type { Phase, View } from "../state/appReducer";
+import type { RouteResult } from "../lib/route";
+import type { EvaluateResult, Item, Tier } from "../lib/types";
+
+/** VIS-3 node taxonomy. Dashed always means provisional / not owned. */
+export type NodeKind =
+  | "room"
+  | "room-unscanned"
+  | "item"
+  | "hub"
+  | "hub-new"
+  | "ghost"
+  | "mini";
+
+/** VIS-4 edge taxonomy (pulse is a cosmetic class, not a kind; SM-8). */
+export type EdgeKind = "inventory" | "scan" | "covered" | "new" | "mini";
+
+export interface GraphNodeDatum {
+  id: string;
+  kind: NodeKind;
+  label: string;
+  sub?: string;
+  /** amber hotspot count on rooms; "+N" unique badge on items */
+  badge?: number;
+  hot?: boolean;
+  /** node id whose last position seeds this node when it first appears (SM-8) */
+  seedNear?: string;
+  domain?: string;
+}
+
+export interface GraphEdgeDatum {
+  id: string;
+  source: string;
+  target: string;
+  kind: EdgeKind;
+  tier?: Tier;
+  /** physics, precomputed from data (ALG-3: specificity keeps domains apart) */
+  distance: number;
+  strength: number;
+}
+
+export interface GraphData {
+  nodes: GraphNodeDatum[];
+  edges: GraphEdgeDatum[];
+}
+
+interface BuildArgs {
+  items: Item[];
+  unscannedRooms: string[];
+  view: View;
+  phase: Phase;
+  result: EvaluateResult | null;
+  route: RouteResult | null;
+  expandedItemId: string | null;
+}
+
+const roomId = (label: string) => `room:${label}`;
+const hubId = (slug: string) => `hub:${slug}`;
+const hubNewId = (slug: string) => `hubnew:${slug}`;
+const miniId = (slug: string) => `mini:${slug}`;
+export const GHOST_ID = "ghost";
+
+function inventoryEdge(
+  itemId: string,
+  slug: string,
+  target: string,
+  tier: Tier,
+  degree: number,
+): GraphEdgeDatum {
+  const specificity = specificityWeight(degree);
+  return {
+    id: inventoryEdgeId(itemId, slug),
+    source: itemId,
+    target,
+    kind: "inventory",
+    tier,
+    // Generic capabilities (low specificity) hold their items loosely and far;
+    // distinctive ones bind tightly — this is what keeps clusters honest.
+    distance: 56 + (1 - specificity) * 84,
+    strength: (0.25 + 0.55 * specificity) * (tier === "primary" ? 1 : 0.75),
+  };
+}
+
+export function buildGraph({
+  items,
+  unscannedRooms,
+  view,
+  phase,
+  result,
+  route,
+  expandedItemId,
+}: BuildArgs): GraphData {
+  const vocabulary = deriveVocabulary(items);
+  const hubs = deriveHubs(items);
+  const hubSlugs = new Set(hubs.map((hub) => hub.slug));
+  const domains = deriveDomains(items);
+  const domainByItemId = new Map<string, string>();
+  domains.forEach((domain) =>
+    domain.itemIds.forEach((itemId) => domainByItemId.set(itemId, domain.label)),
+  );
+
+  const nodes: GraphNodeDatum[] = [];
+  const edges: GraphEdgeDatum[] = [];
+
+  const ghostActive = phase !== "resting" && result != null;
+  const ghostEdgesVisible =
+    ghostActive && (phase === "settling" || phase === "verdict");
+
+  if (view.level === "home") {
+    domains.forEach((domain) => {
+      const hotspotCount = hubs.filter(
+        (hub) =>
+          hub.hot &&
+          hub.owners.some((owner) => domainByItemId.get(owner.itemId) === domain.label),
+      ).length;
+      nodes.push({
+        id: roomId(domain.label),
+        kind: "room",
+        label: domain.label,
+        sub: `${domain.itemIds.length} items`,
+        badge: hotspotCount || undefined,
+        domain: domain.label,
+      });
+    });
+    unscannedRooms.forEach((label) => {
+      nodes.push({
+        id: roomId(label),
+        kind: "room-unscanned",
+        label,
+        sub: copy.unscannedCta,
+      });
+    });
+
+    if (ghostActive && result) {
+      nodes.push({
+        id: GHOST_ID,
+        kind: "ghost",
+        label: copy.ghostLabel(result.name, result.price),
+      });
+
+      if (phase === "extracting" || phase === "scanning" || phase === "routing") {
+        // SM-4: faint dashed scan lines fan to every node — the fan is honest.
+        nodes.forEach((node) => {
+          if (node.id === GHOST_ID) return;
+          edges.push({
+            id: `scan:${node.id}`,
+            source: GHOST_ID,
+            target: node.id,
+            kind: "scan",
+            distance: 0,
+            strength: 0,
+          });
+        });
+      }
+
+      // SM-5 no-match path: approval state at home level — the ghost's new
+      // capabilities materialize as green pills so every row has its edge.
+      if (ghostEdgesVisible && route && route.domain === null) {
+        result.verdict.rows.forEach((row) => {
+          if (row.covered) return;
+          nodes.push({
+            id: hubNewId(row.capSlug),
+            kind: "hub-new",
+            label: row.capability,
+            seedNear: GHOST_ID,
+          });
+          edges.push({
+            id: ghostEdgeId(row.capSlug),
+            source: GHOST_ID,
+            target: hubNewId(row.capSlug),
+            kind: "new",
+            tier: row.tier,
+            distance: 72,
+            strength: 0.7,
+          });
+        });
+      }
+    }
+
+    return { nodes, edges };
+  }
+
+  // Room level: item chips + hub pills + ghost + blooms (VIS-2).
+  const roomLabel = view.domain;
+  const roomItems = items.filter(
+    (item) => domainByItemId.get(item.id) === roomLabel,
+  );
+  const roomItemIds = new Set(roomItems.map((item) => item.id));
+  const roomHubs = hubs.filter((hub) =>
+    hub.owners.some((owner) => roomItemIds.has(owner.itemId)),
+  );
+
+  roomItems.forEach((item) => {
+    const uniqueCount = item.capabilities.filter(
+      (capability) => (vocabulary.get(capability.name)?.degree ?? 0) === 1,
+    ).length;
+    nodes.push({
+      id: item.id,
+      kind: "item",
+      label: item.name,
+      badge: uniqueCount || undefined,
+      seedNear: roomId(roomLabel),
+      domain: roomLabel,
+    });
+  });
+
+  roomHubs.forEach((hub) => {
+    nodes.push({
+      id: hubId(hub.slug),
+      kind: "hub",
+      label: hub.name,
+      hot: hub.hot,
+      seedNear: roomId(roomLabel),
+      domain: roomLabel,
+    });
+    hub.owners.forEach((owner) => {
+      if (!roomItemIds.has(owner.itemId)) return;
+      edges.push(
+        inventoryEdge(owner.itemId, hub.slug, hubId(hub.slug), owner.tier, hub.degree),
+      );
+    });
+  });
+
+  // INT-5: one expansion at a time — unique capabilities bloom as minis.
+  const expandedItem = roomItems.find((item) => item.id === expandedItemId);
+  if (expandedItem) {
+    expandedItem.capabilities.forEach((capability) => {
+      const entry = vocabulary.get(capability.name);
+      if ((entry?.degree ?? 0) !== 1) return;
+      const slug = capSlug(capability.name);
+      nodes.push({
+        id: miniId(slug),
+        kind: "mini",
+        label: capability.name,
+        seedNear: expandedItem.id,
+      });
+      edges.push({
+        id: inventoryEdgeId(expandedItem.id, slug),
+        source: expandedItem.id,
+        target: miniId(slug),
+        kind: "mini",
+        tier: capability.tier,
+        distance: 44,
+        strength: 0.8,
+      });
+    });
+  }
+
+  if (ghostActive && result && ghostEdgesVisible) {
+    nodes.push({
+      id: GHOST_ID,
+      kind: "ghost",
+      label: copy.ghostLabel(result.name, result.price),
+    });
+
+    result.verdict.rows.forEach((row) => {
+      if (row.covered) {
+        let targetId: string;
+        if (hubSlugs.has(row.capSlug)) {
+          targetId = hubId(row.capSlug);
+        } else {
+          // A covered capability below hub promotion (degree 1): materialize
+          // its mini next to its owner so the row still maps to a visible
+          // edge (PR-3b) — mirrors the click-bloom, but caused by the ghost.
+          const owner = vocabulary.get(row.capability)?.owners[0];
+          if (!owner || !roomItemIds.has(owner.itemId)) return;
+          targetId = miniId(row.capSlug);
+          if (!nodes.some((node) => node.id === targetId)) {
+            nodes.push({
+              id: targetId,
+              kind: "mini",
+              label: row.capability,
+              seedNear: owner.itemId,
+            });
+            edges.push({
+              id: inventoryEdgeId(owner.itemId, row.capSlug),
+              source: owner.itemId,
+              target: targetId,
+              kind: "mini",
+              tier: owner.tier,
+              distance: 44,
+              strength: 0.8,
+            });
+          }
+        }
+        edges.push({
+          id: ghostEdgeId(row.capSlug),
+          source: GHOST_ID,
+          target: targetId,
+          kind: "covered",
+          tier: row.tier,
+          distance: 88,
+          strength: 0.5,
+        });
+      } else {
+        // SM-6: genuinely new capabilities materialize as hub-new pills.
+        nodes.push({
+          id: hubNewId(row.capSlug),
+          kind: "hub-new",
+          label: row.capability,
+          seedNear: GHOST_ID,
+        });
+        edges.push({
+          id: ghostEdgeId(row.capSlug),
+          source: GHOST_ID,
+          target: hubNewId(row.capSlug),
+          kind: "new",
+          tier: row.tier,
+          distance: 72,
+          strength: 0.7,
+        });
+      }
+    });
+  }
+
+  return { nodes, edges };
+}
