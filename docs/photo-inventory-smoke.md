@@ -29,8 +29,8 @@ dimensions, decoded size, and absence of embedded metadata.
 
 ## Required setup
 
-Use a Vercel Git Preview branch deployment, never Production. The branch must
-have its own Neon preview database and these configured Preview variables:
+Use a Vercel Git Preview branch deployment for routine smoke runs. The branch
+must have its own Neon preview database and these configured Preview variables:
 
 - Clerk publishable/secret keys and authorized parties for the development
   instance.
@@ -58,6 +58,24 @@ export PHOTO_SMOKE_BASE_URL=https://functiongraph-git-your-branch-team.vercel.ap
 export CLERK_SECRET_KEY=sk_test_...
 npm run test:photo:live
 ```
+
+## Production release verification
+
+Production verification is intentionally double opt-in and accepts only the
+canonical `https://dprakosa.com` origin. Run it only for an explicit release
+check approved by the project owner. It creates disposable Clerk users and one
+temporary inventory row in Production, exercises the real OpenAI path, and
+removes them in `finally` cleanup:
+
+```sh
+vercel env run -e production -- sh -c \
+  'LIVE_PHOTO_SMOKE=1 LIVE_PHOTO_SMOKE_PRODUCTION=1 \
+  PHOTO_SMOKE_BASE_URL=https://dprakosa.com npm run test:photo:live'
+```
+
+Do not set `LIVE_PHOTO_SMOKE_PRODUCTION` in CI or a persistent environment.
+The exact-origin guard prevents this mode from targeting a Preview, generated
+deployment URL, or unrelated Production domain.
 
 If Vercel Deployment Protection is enabled, also set
 `VERCEL_AUTOMATION_BYPASS_SECRET` locally. The script passes it only as the
