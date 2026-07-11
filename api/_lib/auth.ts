@@ -206,6 +206,22 @@ function isStructuredJwt(token: string): boolean {
   });
 }
 
+function hasAuthorizedPartyClaim(token: string): boolean {
+  try {
+    const payload = JSON.parse(
+      Buffer.from(token.split(".")[1], "base64url").toString("utf8"),
+    ) as unknown;
+    return (
+      Boolean(payload) &&
+      typeof payload === "object" &&
+      !Array.isArray(payload) &&
+      Object.prototype.hasOwnProperty.call(payload, "azp")
+    );
+  } catch {
+    return false;
+  }
+}
+
 function hasOnlyMalformedSessionTokens(headers: Headers): boolean {
   // This is only a syntax gate for stable 401s. Clerk still performs every
   // signature, expiry, issuer, session-status, and authorized-party check.
@@ -286,9 +302,20 @@ export async function authenticateApiRequest(
       publishableKey: config.publishableKey,
       secretKey: config.secretKey,
     });
+    const explicitToken = authorizationToken(webRequest.headers);
+    // Browser-created session tokens carry `azp`, so cookie requests and
+    // normal bearer requests remain restricted to the configured origins.
+    // Clerk Backend API test sessions are intentionally issued without `azp`;
+    // Clerk's manual-verification contract says to skip that comparison only
+    // when the signed claim is absent. Signature, expiry, session status,
+    // issuer, and token type are still verified by authenticateRequest.
+    const enforceAuthorizedParties =
+      explicitToken === undefined || hasAuthorizedPartyClaim(explicitToken);
     const state = await clerk.authenticateRequest(webRequest, {
       acceptsToken: "session_token",
-      authorizedParties: config.authorizedParties,
+      ...(enforceAuthorizedParties
+        ? { authorizedParties: config.authorizedParties }
+        : {}),
     });
 
     if (state.isAuthenticated && state.tokenType === "session_token") {

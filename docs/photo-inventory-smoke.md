@@ -66,9 +66,15 @@ documented protection-bypass header and never prints it.
 ## Workflow and cleanup
 
 The script checks sanitized signed-out responses, creates two synthetic Clerk
-users and sessions, scans the fixture, confirms one toaster candidate, reloads
+users and Backend API sessions, scans the fixture, confirms one toaster candidate, reloads
 it, proves the cached oven verdict uses that inventory, checks cross-user
 read/update/delete isolation, edits and reloads, then deletes and reloads.
+
+Clerk Backend API session tokens are sent only in the `Authorization` header.
+Those server-created tokens do not contain the browser-origin `azp` claim;
+the API still verifies their signature, issuer, expiry, active session, and
+session-token type. Browser cookie sessions and browser-created bearer tokens
+retain the exact `CLERK_AUTHORIZED_PARTIES` check.
 
 Confirmation is never retried, avoiding duplicate writes. A scan may retry
 once after a transient `429` or `503`. The `finally` path deletes a confirmed
