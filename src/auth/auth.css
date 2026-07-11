@@ -1,6 +1,29 @@
+.auth-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-shell__content {
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.auth-shell__content > .route-root {
+  height: 100%;
+}
+
+body[data-route="graph"] .auth-shell {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .auth-status {
   width: min(1560px, 100%);
   min-height: 58px;
+  flex: 0 0 auto;
   margin: 0 auto;
   padding: 8px clamp(18px, 3.4vw, 56px);
   display: grid;

@@ -4,6 +4,8 @@ import { TRY_THESE_CHIPS } from "../state/evaluateClient";
 interface ProductCommandBarProps {
   draft: string;
   isEvaluating: boolean;
+  disabled?: boolean;
+  disabledLabel?: string;
   onDraftChange: (value: string) => void;
   onSubmit: FormEventHandler<HTMLFormElement>;
   onExample: (chip: string) => void;
@@ -16,10 +18,13 @@ interface ProductCommandBarProps {
 export function ProductCommandBar({
   draft,
   isEvaluating,
+  disabled = false,
+  disabledLabel = "Inventory unavailable",
   onDraftChange,
   onSubmit,
   onExample,
 }: ProductCommandBarProps) {
+  const unavailable = disabled || isEvaluating;
   return (
     <form className="product-form" onSubmit={onSubmit} aria-busy={isEvaluating}>
       <label htmlFor="product-text">What are you considering?</label>
@@ -32,16 +37,18 @@ export function ProductCommandBar({
           maxLength={1500}
           required
           value={draft}
-          disabled={isEvaluating}
+          disabled={unavailable}
           placeholder="Paste a product name, listing, or short description"
           onChange={(event) => onDraftChange(event.target.value)}
         />
         <button
           className="button button--evaluate"
           type="submit"
-          disabled={isEvaluating}
+          disabled={unavailable}
         >
-          <span>{isEvaluating ? "Evaluating" : "Map capabilities"}</span>
+          <span>
+            {disabled ? disabledLabel : isEvaluating ? "Evaluating" : "Map capabilities"}
+          </span>
           <span aria-hidden="true">→</span>
         </button>
       </div>
@@ -53,7 +60,7 @@ export function ProductCommandBar({
             <button
               type="button"
               key={chip}
-              disabled={isEvaluating}
+              disabled={unavailable}
               onClick={() => onExample(chip)}
             >
               {chip}

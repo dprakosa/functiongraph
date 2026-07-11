@@ -8,7 +8,7 @@ import {
   SignUpButton,
   UserButton,
 } from "@clerk/react";
-import type { ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 
 interface AuthShellProps {
   publishableKey?: string | null;
@@ -17,6 +17,51 @@ interface AuthShellProps {
 
 interface GuestDemoStatusProps {
   unavailable?: boolean;
+}
+
+export type ViewerMode = "guest" | "loading" | "signed-in";
+
+interface ViewerState {
+  mode: ViewerMode;
+}
+
+const ViewerStateContext = createContext<ViewerState>({ mode: "guest" });
+
+export function useViewerState(): ViewerState {
+  return useContext(ViewerStateContext);
+}
+
+export function ViewerStateProvider({
+  mode,
+  children,
+}: {
+  mode: ViewerMode;
+  children: ReactNode;
+}) {
+  return (
+    <ViewerStateContext.Provider value={{ mode }}>
+      {children}
+    </ViewerStateContext.Provider>
+  );
+}
+
+function AuthFrame({
+  mode,
+  status,
+  children,
+}: {
+  mode: ViewerMode;
+  status: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <ViewerStateProvider mode={mode}>
+      <div className="auth-shell" data-viewer-mode={mode}>
+        {status}
+        <div className="auth-shell__content">{children}</div>
+      </div>
+    </ViewerStateProvider>
+  );
 }
 
 function StatusCopy({
@@ -64,7 +109,7 @@ function AuthLoadingStatus() {
       data-auth-state="loading"
     >
       <StatusCopy label="Checking account" tone="loading">
-        The offline demo remains available while sign-in loads.
+        The graph waits here until the correct inventory boundary is known.
       </StatusCopy>
     </aside>
   );
@@ -123,30 +168,36 @@ export function AuthShell({ publishableKey, children }: AuthShellProps) {
 
   if (!configuredKey) {
     return (
-      <>
-        <GuestDemoStatus />
+      <AuthFrame mode="guest" status={<GuestDemoStatus />}>
         {children}
-      </>
+      </AuthFrame>
     );
   }
 
   return (
     <ClerkProvider publishableKey={configuredKey}>
       <ClerkLoading>
-        <AuthLoadingStatus />
+        <AuthFrame mode="loading" status={<AuthLoadingStatus />}>
+          {children}
+        </AuthFrame>
       </ClerkLoading>
       <ClerkLoaded>
         <Show when="signed-out">
-          <SignedOutStatus />
+          <AuthFrame mode="guest" status={<SignedOutStatus />}>
+            {children}
+          </AuthFrame>
         </Show>
         <Show when="signed-in">
-          <SignedInStatus />
+          <AuthFrame mode="signed-in" status={<SignedInStatus />}>
+            {children}
+          </AuthFrame>
         </Show>
       </ClerkLoaded>
       <ClerkFailed>
-        <GuestDemoStatus unavailable />
+        <AuthFrame mode="guest" status={<GuestDemoStatus unavailable />}>
+          {children}
+        </AuthFrame>
       </ClerkFailed>
-      {children}
     </ClerkProvider>
   );
 }

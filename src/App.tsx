@@ -7,6 +7,7 @@ import {
   type FormEvent,
 } from "react";
 import inventoryFile from "./data/inventory.json";
+import { useViewerState } from "./auth/AuthShell";
 import { GraphCanvas } from "./components/GraphCanvas";
 import { ProductCommandBar } from "./components/ProductCommandBar";
 import {
@@ -14,9 +15,14 @@ import {
   type GraphNodeDatum,
 } from "./graph/buildGraph";
 import { useReducedMotion } from "./hooks/useReducedMotion";
+import {
+  useActiveInventory,
+  type ActiveInventoryState,
+} from "./inventory/useActiveInventory";
 import { copy } from "./lib/copy";
 import { routeVerdict } from "./lib/route";
-import type { InventoryFile, Row } from "./lib/types";
+import type { InventoryFile, Item, Row } from "./lib/types";
+import { RouteLink } from "./routing/RouteLink";
 import {
   appReducer,
   initialState,
@@ -26,7 +32,7 @@ import {
 import { evaluate, EvaluateFailure } from "./state/evaluateClient";
 import { useBeats } from "./state/useBeats";
 
-const inventory = inventoryFile as InventoryFile;
+const guestInventory = inventoryFile as InventoryFile;
 
 function titleCase(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
@@ -36,6 +42,149 @@ function formatPrice(price: number): string {
   return `$${price.toLocaleString("en-AU", {
     maximumFractionDigits: Number.isInteger(price) ? 0 : 2,
   })}`;
+}
+
+function inventoryStatusCopy(inventory: ActiveInventoryState): {
+  label: string;
+  detail: string;
+} {
+  switch (inventory.status) {
+    case "guest":
+      return {
+        label: "Guest inventory",
+        detail: `${inventory.items.length} bundled items · examples stay offline`,
+      };
+    case "loading":
+      return { label: "Personal inventory", detail: "Loading your confirmed items" };
+    case "error":
+      return { label: "Personal inventory", detail: "Inventory unavailable" };
+    case "empty":
+      return { label: "Personal inventory", detail: "No confirmed items yet" };
+    case "populated":
+      return {
+        label: "Personal inventory",
+        detail: `${inventory.items.length} confirmed ${inventory.items.length === 1 ? "item" : "items"}`,
+      };
+  }
+}
+
+function InventoryBar({ inventory }: { inventory: ActiveInventoryState }) {
+  const status = inventoryStatusCopy(inventory);
+  return (
+    <section className="inventory-bar" aria-label="Inventory status and photo action">
+      <div
+        className="inventory-bar__status"
+        role="status"
+        aria-live="polite"
+        data-inventory-status={inventory.status}
+      >
+        <span className="inventory-bar__signal" aria-hidden="true" />
+        <span>
+          <strong>{status.label}</strong>
+          <small>{status.detail}</small>
+        </span>
+      </div>
+      <div
+        className="photo-action-slot"
+        id="photo-action-slot"
+        data-slot="photo-action"
+        tabIndex={-1}
+      >
+        <button className="button photo-action" type="button" disabled>
+          Add from photo
+          <small>Coming next</small>
+        </button>
+        <span className="visually-hidden">
+          Photo capture is reserved here and will be enabled by the photo inventory feature.
+        </span>
+      </div>
+    </section>
+  );
+}
+
+function InventoryCanvasState({ inventory }: { inventory: ActiveInventoryState }) {
+  if (inventory.status === "loading") {
+    return (
+      <div className="inventory-canvas-state inventory-canvas-state--loading" role="status">
+        <span className="inventory-state-kicker">Personal inventory</span>
+        <h2>Loading your capability map</h2>
+        <p>We are checking the items confirmed for this account.</p>
+        <div className="inventory-state-skeleton" aria-hidden="true">
+          <i /><i /><i />
+        </div>
+      </div>
+    );
+  }
+
+  if (inventory.status === "error") {
+    return (
+      <div className="inventory-canvas-state" role="alert">
+        <span className="inventory-state-kicker">Personal inventory</span>
+        <h2>Your inventory could not load</h2>
+        <p>{titleCase(inventory.error)}. {inventory.hint}</p>
+        <button className="button inventory-state-action" type="button" onClick={inventory.retry}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (inventory.status === "empty") {
+    return (
+      <div className="inventory-canvas-state inventory-canvas-state--empty">
+        <span className="inventory-state-kicker">Your account starts empty</span>
+        <h2>Capture what you own to build this graph</h2>
+        <p>
+          Confirmed items will become rooms, objects, and capabilities here. Demo
+          ownership is never substituted into your personal account.
+        </p>
+        <a className="inventory-state-action" href="#photo-action-slot">
+          Find the photo action
+        </a>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+function ItemInspectorSlot({
+  item,
+  onClose,
+}: {
+  item: Item;
+  onClose: () => void;
+}) {
+  return (
+    <aside
+      className="item-inspector-slot"
+      data-slot="item-inspector"
+      aria-labelledby="item-inspector-title"
+    >
+      <div className="item-inspector-slot__header">
+        <div>
+          <p className="eyebrow">Item inspector</p>
+          <h2 id="item-inspector-title">{item.name}</h2>
+        </div>
+        <button type="button" aria-label="Close item inspector" onClick={onClose}>
+          ×
+        </button>
+      </div>
+      <p className="item-inspector-slot__domain">{titleCase(item.domain)}</p>
+      <h3>Mapped capabilities</h3>
+      <ul>
+        {item.capabilities.map((capability) => (
+          <li key={`${capability.name}:${capability.tier}`}>
+            <span>{capability.name}</span>
+            <small>{capability.tier}</small>
+          </li>
+        ))}
+      </ul>
+      <p className="item-inspector-slot__note">
+        Edit and delete controls will use this contextual rail in the saved-item release.
+      </p>
+    </aside>
+  );
 }
 
 function phaseMessage(state: AppState): string | null {
@@ -225,7 +374,12 @@ function VerdictPanel({ state, dispatch }: VerdictPanelProps) {
   );
 }
 
-export default function App() {
+export default function GraphPage() {
+  const viewer = useViewerState();
+  const activeInventory = useActiveInventory(viewer.mode);
+  const activeItems = activeInventory.items ?? [];
+  const unscannedRooms =
+    activeInventory.status === "guest" ? guestInventory.unscannedRooms : [];
   const [state, dispatch] = useReducer(appReducer, initialState({
     dollarsKept: 0,
     kgAvoided: 0,
@@ -245,8 +399,8 @@ export default function App() {
   const graph = useMemo(
     () =>
       buildGraph({
-        items: inventory.items,
-        unscannedRooms: inventory.unscannedRooms,
+        items: activeItems,
+        unscannedRooms,
         view: state.view,
         phase: state.phase,
         result: state.result,
@@ -261,6 +415,8 @@ export default function App() {
       state.route,
       state.expandedItemId,
       state.evidenceVisible,
+      activeItems,
+      unscannedRooms,
     ],
   );
 
@@ -273,7 +429,7 @@ export default function App() {
   const viewKey =
     state.view.level === "home" ? "home" : `room:${state.view.domain}`;
   const selectedItem = state.expandedItemId
-    ? inventory.items.find((item) => item.id === state.expandedItemId) ?? null
+    ? activeItems.find((item) => item.id === state.expandedItemId) ?? null
     : null;
   const itemSelectionStatus = selectedItem
     ? `${selectedItem.name} selected. Connected capabilities: ${selectedItem.capabilities
@@ -286,12 +442,12 @@ export default function App() {
     const sequence = ++requestSequence.current;
     dispatch({ type: "EVALUATE_START", text });
     try {
-      const result = await evaluate(text);
+      const result = await evaluate(text, activeItems);
       if (sequence !== requestSequence.current) return;
       dispatch({
         type: "EVALUATE_SUCCESS",
         result,
-        route: routeVerdict(result.verdict, inventory.items),
+        route: routeVerdict(result.verdict, activeItems),
         // Read the current preference after the async evaluation returns. A
         // preference change while a request is pending must not strand the
         // result in the extracting phase (SM-9).
@@ -335,12 +491,32 @@ export default function App() {
     }
   };
 
+  const inventoryReady =
+    activeInventory.status === "guest" ||
+    activeInventory.status === "empty" ||
+    activeInventory.status === "populated";
+  const showGraph =
+    inventoryReady && (activeItems.length > 0 || state.phase !== "resting");
+  const showItemInspector = Boolean(selectedItem && state.phase !== "verdict");
+  const hasContextualRail = state.phase === "verdict" || showItemInspector;
+  const commandDisabled =
+    activeInventory.status === "loading" || activeInventory.status === "error";
+
   return (
-    <main className="app-shell">
+    <main className="app-shell" aria-labelledby="intro-title">
       <section className="intro" id="top" aria-labelledby="intro-title">
         <div className="intro__copy">
-          <p className="eyebrow">Purchase evaluation</p>
-          <h1 id="intro-title">Map a product against what you own</h1>
+          <p className="eyebrow graph-brandline">
+            <RouteLink className="graph-wordmark" to="/" aria-label="FunctionGraph home">
+              <span className="graph-brandmark" aria-hidden="true">FG</span>
+              <span>FunctionGraph</span>
+            </RouteLink>
+            <span className="graph-brandline__divider" aria-hidden="true">/</span>
+            <span>Purchase evaluation</span>
+          </p>
+          <h1 id="intro-title" data-route-heading tabIndex={-1}>
+            Map a product against what you own
+          </h1>
           <p>
             See every covered capability and the genuinely new delta before
             you decide.
@@ -349,11 +525,19 @@ export default function App() {
         <ProductCommandBar
           draft={draft}
           isEvaluating={isReading}
+          disabled={commandDisabled}
+          disabledLabel={
+            activeInventory.status === "loading"
+              ? "Loading inventory"
+              : "Inventory unavailable"
+          }
           onDraftChange={setDraft}
           onSubmit={submitProduct}
           onExample={tryExample}
         />
       </section>
+
+      <InventoryBar inventory={activeInventory} />
 
       {state.error && (
         <section className="error-banner" role="alert">
@@ -396,7 +580,9 @@ export default function App() {
       )}
 
       <section
-        className={`workspace${state.phase === "verdict" ? " has-verdict" : ""}`}
+        className={`workspace${state.phase === "verdict" ? " has-verdict" : ""}${
+          hasContextualRail ? " has-contextual-rail" : ""
+        }`}
         aria-label="Capability graph and verdict"
       >
         <div className="canvas-column">
@@ -414,41 +600,49 @@ export default function App() {
               <p className="eyebrow">Live inventory</p>
               <h2>{viewLabel}</h2>
             </div>
-            <div className="graph-legend" aria-label="Graph legend">
-              <span><i className="legend-covered" /> covered</span>
-              <span><i className="legend-new" /> new</span>
-              <span><i className="legend-item" /> item</span>
-              <span><i className="legend-capability" /> capability</span>
-            </div>
+            {showGraph && (
+              <div className="graph-legend" aria-label="Graph legend">
+                <span><i className="legend-covered" /> covered</span>
+                <span><i className="legend-new" /> new</span>
+                <span><i className="legend-item" /> item</span>
+                <span><i className="legend-capability" /> capability</span>
+              </div>
+            )}
           </div>
 
           <div className="canvas-frame">
-            <GraphCanvas
-              graph={graph}
-              phase={state.phase}
-              routeDomain={state.route?.domain ?? null}
-              routingActive={state.phase === "routing"}
-              pulsingSlug={state.pulsingSlug}
-              selectedItemId={state.expandedItemId}
-              reducedMotion={reducedMotion}
-              viewKey={viewKey}
-              onNodeClick={handleNodeClick}
-              onZoomOut={() => dispatch({ type: "WENT_HOME" })}
-            />
-            <p
-              className="visually-hidden"
-              id="item-selection-status"
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
-            >
-              {itemSelectionStatus}
-            </p>
+            {showGraph ? (
+              <>
+                <GraphCanvas
+                  graph={graph}
+                  phase={state.phase}
+                  routeDomain={state.route?.domain ?? null}
+                  routingActive={state.phase === "routing"}
+                  pulsingSlug={state.pulsingSlug}
+                  selectedItemId={state.expandedItemId}
+                  reducedMotion={reducedMotion}
+                  viewKey={viewKey}
+                  onNodeClick={handleNodeClick}
+                  onZoomOut={() => dispatch({ type: "WENT_HOME" })}
+                />
+                <p
+                  className="visually-hidden"
+                  id="item-selection-status"
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  {itemSelectionStatus}
+                </p>
+              </>
+            ) : (
+              <InventoryCanvasState inventory={activeInventory} />
+            )}
 
-            {state.phase === "resting" && state.view.level === "home" && (
+            {showGraph && state.phase === "resting" && state.view.level === "home" && (
               <p className="canvas-hint">Tap a room, or map a product above</p>
             )}
-            {state.phase === "resting" && state.view.level === "room" && (
+            {showGraph && state.phase === "resting" && state.view.level === "room" && (
               <p className="canvas-hint">Tap an item to highlight its capabilities</p>
             )}
             {statusMessage && (
@@ -477,6 +671,12 @@ export default function App() {
         </div>
 
         <VerdictPanel state={state} dispatch={dispatch} />
+        {selectedItem && showItemInspector && (
+          <ItemInspectorSlot
+            item={selectedItem}
+            onClose={() => dispatch({ type: "ITEM_TOGGLED", itemId: selectedItem.id })}
+          />
+        )}
       </section>
 
       <footer className="app-footer">

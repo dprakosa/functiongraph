@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
+import { ViewerStateProvider } from "./auth/AuthShell";
 import type { GraphCanvasProps } from "./components/GraphCanvas";
 import { TIMINGS } from "./state/useBeats";
 
@@ -261,12 +262,14 @@ describe("FunctionGraph frontend contract", () => {
     },
   );
 
-  it("clears the verdict when the oven purchase is skipped without the removed header", async () => {
+  it("clears the verdict while keeping only the compact shared brand", async () => {
     setReducedMotion(true);
     failedFetch();
     render(<App />);
 
-    expect(screen.queryByText("FunctionGraph")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "FunctionGraph home" }),
+    ).toBeVisible();
     expect(
       screen.queryByText("Capability-level purchase decisions, mapped live."),
     ).not.toBeInTheDocument();
@@ -325,6 +328,116 @@ describe("FunctionGraph frontend contract", () => {
       ),
     ).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never flashes the guest graph while a signed-in inventory is loading", () => {
+    setReducedMotion(true);
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => undefined)));
+
+    render(
+      <ViewerStateProvider mode="signed-in">
+        <App />
+      </ViewerStateProvider>,
+    );
+
+    expect(screen.getByRole("heading", { name: "Loading your capability map" })).toBeVisible();
+    expect(screen.getByText("Loading your confirmed items")).toBeVisible();
+    expect(screen.queryByTestId("graph-canvas")).not.toBeInTheDocument();
+    expect(screen.queryByText(/36 bundled items/i)).not.toBeInTheDocument();
+  });
+
+  it("shows the signed-in scan-first empty state and scores offline examples against no owned items", async () => {
+    setReducedMotion(true);
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ items: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <ViewerStateProvider mode="signed-in">
+        <App />
+      </ViewerStateProvider>,
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Capture what you own to build this graph",
+      }),
+    ).toBeVisible();
+    expect(screen.getByText("No confirmed items yet")).toBeVisible();
+    expect(screen.queryByTestId("graph-canvas")).not.toBeInTheDocument();
+
+    await chooseExample(OVEN_CHIP);
+
+    expect(
+      await screen.findByRole("heading", { name: "Convection countertop oven" }),
+    ).toBeVisible();
+    expect(screen.getByText("0 of 5 covered")).toBeVisible();
+    expect(screen.getByTestId("graph-canvas")).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a signed-in inventory error explicit and retryable without demo fallback", async () => {
+    setReducedMotion(true);
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: "inventory service is unavailable",
+          hint: "Try again in a moment.",
+        }),
+        { status: 503, headers: { "content-type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <ViewerStateProvider mode="signed-in">
+        <App />
+      </ViewerStateProvider>,
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).getByText("Your inventory could not load")).toBeVisible();
+    expect(within(alert).getByText(/Try again in a moment/)).toBeVisible();
+    expect(screen.queryByTestId("graph-canvas")).not.toBeInTheDocument();
+
+    await userEvent.click(within(alert).getByRole("button", { name: "Try again" }));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("renders a populated personal graph from the signed-in inventory response", async () => {
+    setReducedMotion(true);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: "personal-kettle",
+                name: "Personal kettle",
+                domain: "kitchen",
+                capabilities: [{ name: "boils water", tier: "primary" }],
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      ),
+    );
+
+    render(
+      <ViewerStateProvider mode="signed-in">
+        <App />
+      </ViewerStateProvider>,
+    );
+
+    expect(await screen.findByText("1 confirmed item")).toBeVisible();
+    expect(screen.getByTestId("graph-canvas")).toBeVisible();
+    expect(screen.queryByText(/bundled items/i)).not.toBeInTheDocument();
   });
 
   it("honours reduced motion when the preference changes during a pending evaluation", async () => {
