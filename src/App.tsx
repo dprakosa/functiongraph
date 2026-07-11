@@ -8,6 +8,7 @@ import {
 } from "react";
 import inventoryFile from "./data/inventory.json";
 import { GraphCanvas } from "./components/GraphCanvas";
+import { ProductCommandBar } from "./components/ProductCommandBar";
 import {
   buildGraph,
   type GraphNodeDatum,
@@ -22,11 +23,7 @@ import {
   type AppAction,
   type AppState,
 } from "./state/appReducer";
-import {
-  evaluate,
-  EvaluateFailure,
-  TRY_THESE_CHIPS,
-} from "./state/evaluateClient";
+import { evaluate, EvaluateFailure } from "./state/evaluateClient";
 import { useBeats } from "./state/useBeats";
 
 const inventory = inventoryFile as InventoryFile;
@@ -129,7 +126,10 @@ function VerdictPanel({ state, dispatch }: VerdictPanelProps) {
   };
 
   return (
-    <aside className="verdict-panel" aria-labelledby="verdict-title">
+    <aside
+      className={`verdict-panel${isApproval ? " verdict-panel--approval" : ""}`}
+      aria-labelledby="verdict-title"
+    >
       <div className="verdict-panel__header">
         <p className="eyebrow">Verdict</p>
         <div className="verdict-panel__titleline">
@@ -233,6 +233,8 @@ export default function App() {
   const [draft, setDraft] = useState("");
   const requestSequence = useRef(0);
   const reducedMotion = useReducedMotion();
+  const reducedMotionRef = useRef(reducedMotion);
+  reducedMotionRef.current = reducedMotion;
 
   useBeats(state, dispatch, reducedMotion);
 
@@ -250,6 +252,7 @@ export default function App() {
         result: state.result,
         route: state.route,
         expandedItemId: state.expandedItemId,
+        evidenceVisible: state.evidenceVisible,
       }),
     [
       state.view,
@@ -257,6 +260,7 @@ export default function App() {
       state.result,
       state.route,
       state.expandedItemId,
+      state.evidenceVisible,
     ],
   );
 
@@ -268,6 +272,14 @@ export default function App() {
       : `${titleCase(state.view.domain)} room`;
   const viewKey =
     state.view.level === "home" ? "home" : `room:${state.view.domain}`;
+  const selectedItem = state.expandedItemId
+    ? inventory.items.find((item) => item.id === state.expandedItemId) ?? null
+    : null;
+  const itemSelectionStatus = selectedItem
+    ? `${selectedItem.name} selected. Connected capabilities: ${selectedItem.capabilities
+        .map((capability) => capability.name)
+        .join(", ")}.`
+    : "Item selection cleared.";
 
   const startEvaluation = async (rawText: string) => {
     const text = rawText.trim();
@@ -280,7 +292,10 @@ export default function App() {
         type: "EVALUATE_SUCCESS",
         result,
         route: routeVerdict(result.verdict, inventory.items),
-        reducedMotion,
+        // Read the current preference after the async evaluation returns. A
+        // preference change while a request is pending must not strand the
+        // result in the extracting phase (SM-9).
+        reducedMotion: reducedMotionRef.current,
       });
     } catch (error) {
       if (sequence !== requestSequence.current) return;
@@ -322,77 +337,22 @@ export default function App() {
 
   return (
     <main className="app-shell">
-      <header className="app-header">
-        <a className="brand" href="#top" aria-label="FunctionGraph home">
-          <span className="brand__mark" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </span>
-          <span>FunctionGraph</span>
-        </a>
-        <p className="app-header__promise">
-          See what a purchase adds before you buy it.
-        </p>
-        <output className="impact-counter" aria-live="polite">
-          <span className="impact-counter__dot" aria-hidden="true" />
-          {copy.impact(state.impact.dollarsKept, state.impact.kgAvoided)}
-        </output>
-      </header>
-
       <section className="intro" id="top" aria-labelledby="intro-title">
         <div className="intro__copy">
-          <p className="eyebrow">Anti-redundancy purchase copilot</p>
-          <h1 id="intro-title">
-            Buy the <em>capability</em>,<br />
-            not the duplicate.
-          </h1>
+          <p className="eyebrow">Purchase evaluation</p>
+          <h1 id="intro-title">Map a product against what you own</h1>
           <p>
-            FunctionGraph compares a product with the capabilities in your
-            inventory, then shows exactly what is covered and what is new.
+            See every covered capability and the genuinely new delta before
+            you decide.
           </p>
         </div>
-
-        <form
-          className="product-form"
+        <ProductCommandBar
+          draft={draft}
+          isEvaluating={isReading}
+          onDraftChange={setDraft}
           onSubmit={submitProduct}
-          aria-busy={isReading}
-        >
-          <label htmlFor="product-text">What are you considering?</label>
-          <div className="product-form__input">
-            <textarea
-              id="product-text"
-              name="text"
-              rows={3}
-              minLength={3}
-              maxLength={1500}
-              required
-              value={draft}
-              disabled={isReading}
-              placeholder="Paste a product name, listing, or short description"
-              onChange={(event) => setDraft(event.target.value)}
-            />
-            <button className="button button--evaluate" type="submit" disabled={isReading}>
-              <span>{isReading ? "Reading product" : "Map capabilities"}</span>
-              <span aria-hidden="true">→</span>
-            </button>
-          </div>
-          <div className="try-these" aria-label="Try these examples">
-            <span>Try these</span>
-            <div>
-              {TRY_THESE_CHIPS.map((chip) => (
-                <button
-                  type="button"
-                  key={chip}
-                  disabled={isReading}
-                  onClick={() => tryExample(chip)}
-                >
-                  {chip}
-                </button>
-              ))}
-            </div>
-          </div>
-        </form>
+          onExample={tryExample}
+        />
       </section>
 
       {state.error && (
@@ -457,7 +417,8 @@ export default function App() {
             <div className="graph-legend" aria-label="Graph legend">
               <span><i className="legend-covered" /> covered</span>
               <span><i className="legend-new" /> new</span>
-              <span><i className="legend-owned" /> owned</span>
+              <span><i className="legend-item" /> item</span>
+              <span><i className="legend-capability" /> capability</span>
             </div>
           </div>
 
@@ -468,17 +429,27 @@ export default function App() {
               routeDomain={state.route?.domain ?? null}
               routingActive={state.phase === "routing"}
               pulsingSlug={state.pulsingSlug}
+              selectedItemId={state.expandedItemId}
               reducedMotion={reducedMotion}
               viewKey={viewKey}
               onNodeClick={handleNodeClick}
               onZoomOut={() => dispatch({ type: "WENT_HOME" })}
             />
+            <p
+              className="visually-hidden"
+              id="item-selection-status"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {itemSelectionStatus}
+            </p>
 
             {state.phase === "resting" && state.view.level === "home" && (
               <p className="canvas-hint">Tap a room, or map a product above</p>
             )}
             {state.phase === "resting" && state.view.level === "room" && (
-              <p className="canvas-hint">Tap an item to reveal its unique capabilities</p>
+              <p className="canvas-hint">Tap an item to highlight its capabilities</p>
             )}
             {statusMessage && (
               <div

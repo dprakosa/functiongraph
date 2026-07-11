@@ -25,7 +25,14 @@ export function useBeats(
   dispatch: Dispatch<AppAction>,
   reducedMotion: boolean,
 ) {
-  const { phase, revealedChips, result, route, pulsingSlug } = state;
+  const {
+    phase,
+    revealedChips,
+    result,
+    route,
+    evidenceVisible,
+    pulsingSlug,
+  } = state;
 
   useEffect(() => {
     if (reducedMotion) return; // SM-9: EVALUATE_SUCCESS already jumped to verdict.
@@ -51,13 +58,23 @@ export function useBeats(
           route?.domain ? { type: "DIVE_STARTED" } : { type: "VERDICT_SHOWN" },
         );
       case "settling":
-        return schedule(TIMINGS.cameraMs + TIMINGS.settleMs, {
-          type: "VERDICT_SHOWN",
-        });
+        // The camera gets its complete 700–900 ms move before the ghost and
+        // verdict evidence join the room simulation (SM-6).
+        return evidenceVisible
+          ? schedule(TIMINGS.settleMs, { type: "VERDICT_SHOWN" })
+          : schedule(TIMINGS.cameraMs, { type: "EVIDENCE_REVEALED" });
       default:
         return undefined;
     }
-  }, [dispatch, phase, reducedMotion, result, revealedChips, route]);
+  }, [
+    dispatch,
+    evidenceVisible,
+    phase,
+    reducedMotion,
+    result,
+    revealedChips,
+    route,
+  ]);
 
   // INT-6: a pulse lasts ≤ 2 s (cosmetic only — never reheats physics, SM-8).
   useEffect(() => {

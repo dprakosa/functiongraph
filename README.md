@@ -19,6 +19,11 @@ normative values may only change with human sign-off and a PDD decision-log
 entry. The app uses React, TypeScript, D3, SVG, versioned JSON data, and two
 Vercel-compatible backend endpoints. There is no database or persistence.
 
+Visual implementation follows [DESIGN.md](./DESIGN.md), which combines a
+Linear-inspired bright, compact interface discipline with FunctionGraph's
+graph-first layout and fixed coral/green semantic colour law. `PDD.md` remains
+higher precedence whenever the two documents differ.
+
 ## Run locally
 
 ```bash
@@ -52,9 +57,9 @@ coverage math.
 - Paste a product or tap an example to run extract, scan, route, settle, and
   verdict beats.
 - Pan or wheel-zoom the canvas and drag graph nodes.
-- Tap an item to reveal its unique capabilities.
+- Tap an item to highlight every connected capability and reveal its unique capabilities.
 - Tap a verdict row to highlight exactly its graph edge.
-- Skip a purchase to update the impact counter, or choose “I still need it”
+- Skip a purchase to record the avoided impact, or choose “I still need it”
   and record a reason before buying anyway.
 - Use the responsive stacked layout on phones; reduced-motion preferences skip
   the choreography and retain static evidence highlighting.
@@ -161,6 +166,10 @@ end.
 
 ## Repository map
 
+- `DESIGN.md` — authoritative visual tokens, component treatments, motion,
+  responsive, and accessibility rules.
+- `src/components/ProductCommandBar.tsx` — cache-aligned product entry and
+  offline demo chips.
 - `src/App.tsx` — reducer-owned product flow and verdict UI.
 - `src/components/GraphCanvas.tsx` — force-directed SVG renderer.
 - `src/graph/buildGraph.ts` — graph data derived from inventory and verdicts.

@@ -29,6 +29,8 @@ export interface AppState {
   result: EvaluateResult | null;
   route: RouteResult | null;
   revealedChips: number;
+  /** Settling sub-beat: camera enters the room before ghost evidence appears. */
+  evidenceVisible: boolean;
   expandedItemId: string | null;
   pulsingSlug: string | null;
   stillNeedItOpen: boolean;
@@ -51,6 +53,7 @@ export type AppAction =
   | { type: "SCAN_STARTED" }
   | { type: "ROUTE_SHOWN" }
   | { type: "DIVE_STARTED" }
+  | { type: "EVIDENCE_REVEALED" }
   | { type: "VERDICT_SHOWN" }
   | { type: "REDUCED_MOTION_ENABLED" }
   | { type: "ROW_PULSED"; capSlug: string }
@@ -74,6 +77,7 @@ export function initialState(impact: Impact): AppState {
     result: null,
     route: null,
     revealedChips: 0,
+    evidenceVisible: false,
     expandedItemId: null,
     pulsingSlug: null,
     stillNeedItOpen: false,
@@ -93,6 +97,7 @@ function clearedEvaluation(state: AppState): AppState {
     result: null,
     route: null,
     revealedChips: 0,
+    evidenceVisible: false,
     pulsingSlug: null,
     stillNeedItOpen: false,
     reason: "",
@@ -123,6 +128,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         reason: "",
         view: { level: "home" },
         revealedChips: 0,
+        evidenceVisible: false,
         phase: "extracting",
       };
       if (action.reducedMotion) {
@@ -131,6 +137,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           ...base,
           phase: "verdict",
           revealedChips: action.result.capabilities.length,
+          evidenceVisible: true,
           view: action.route.domain
             ? { level: "room", domain: action.route.domain }
             : { level: "home" },
@@ -162,12 +169,18 @@ export function appReducer(state: AppState, action: AppAction): AppState {
             ...state,
             phase: "settling",
             view: { level: "room", domain: state.route.domain },
+            evidenceVisible: false,
           }
+        : state;
+
+    case "EVIDENCE_REVEALED":
+      return state.phase === "settling"
+        ? { ...state, evidenceVisible: true }
         : state;
 
     case "VERDICT_SHOWN":
       return state.phase === "routing" || state.phase === "settling"
-        ? { ...state, phase: "verdict" }
+        ? { ...state, phase: "verdict", evidenceVisible: true }
         : state;
 
     case "REDUCED_MOTION_ENABLED":
@@ -179,6 +192,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
             ...state,
             phase: "verdict",
             revealedChips: state.result.capabilities.length,
+            evidenceVisible: true,
             view: state.route?.domain
               ? { level: "room", domain: state.route.domain }
               : { level: "home" },

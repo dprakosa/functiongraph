@@ -8,7 +8,7 @@ import type {
   InventoryFile,
   ProductDecomposition,
 } from "../lib/types";
-import { buildGraph } from "./buildGraph";
+import { buildGraph, deriveItemCapabilitySelection } from "./buildGraph";
 
 const inventory = inventoryFile as InventoryFile;
 
@@ -115,4 +115,86 @@ describe("expanded four-room graph", () => {
       });
     },
   );
+});
+
+describe("room → item → capability hierarchy", () => {
+  it("never connects one item directly to another item", () => {
+    const graph = buildGraph({
+      items: inventory.items,
+      unscannedRooms: inventory.unscannedRooms,
+      view: { level: "room", domain: "kitchen" },
+      phase: "resting",
+      result: null,
+      route: null,
+      expandedItemId: "air-fryer",
+    });
+    const kindById = new Map(graph.nodes.map((node) => [node.id, node.kind]));
+
+    graph.edges.forEach((edge) => {
+      expect(
+        kindById.get(edge.source) === "item" &&
+          kindById.get(edge.target) === "item",
+        `direct item edge ${edge.id}`,
+      ).toBe(false);
+    });
+
+    graph.edges
+      .filter((edge) => edge.kind === "inventory")
+      .forEach((edge) => {
+        expect(kindById.get(edge.source)).toBe("item");
+        expect(["hub", "mini"]).toContain(kindById.get(edge.target));
+      });
+  });
+
+  it("derives every connected capability for the selected item", () => {
+    const graph = buildGraph({
+      items: inventory.items,
+      unscannedRooms: inventory.unscannedRooms,
+      view: { level: "room", domain: "kitchen" },
+      phase: "resting",
+      result: null,
+      route: null,
+      expandedItemId: "air-fryer",
+    });
+    const selection = deriveItemCapabilitySelection(graph, "air-fryer");
+
+    expect([...selection.nodeIds].sort()).toEqual(
+      [
+        "hub:bakes-food",
+        "hub:reheats-leftovers",
+        "hub:toasts-bread",
+        "mini:crisps-food-with-hot-air",
+      ].sort(),
+    );
+    expect(selection.edgeIds.size).toBe(4);
+    expect(
+      graph.nodes
+        .filter((node) => selection.nodeIds.has(node.id))
+        .every((node) => node.kind === "hub" || node.kind === "mini"),
+    ).toBe(true);
+  });
+
+  it("keeps highlighting cosmetic when the selected item has no unique nodes", () => {
+    const buildRoom = (expandedItemId: string | null) =>
+      buildGraph({
+        items: inventory.items,
+        unscannedRooms: inventory.unscannedRooms,
+        view: { level: "room", domain: "kitchen" },
+        phase: "resting",
+        result: null,
+        route: null,
+        expandedItemId,
+      });
+    const unselected = buildRoom(null);
+    const toasterSelected = buildRoom("toaster");
+    const signature = (graph: ReturnType<typeof buildGraph>) => ({
+      nodes: graph.nodes.map((node) => node.id).sort(),
+      edges: graph.edges.map((edge) => edge.id).sort(),
+    });
+
+    expect(signature(toasterSelected)).toEqual(signature(unselected));
+    expect([
+      ...deriveItemCapabilitySelection(toasterSelected, "toaster").nodeIds,
+    ]).toEqual(["hub:toasts-bread"]);
+  });
 });

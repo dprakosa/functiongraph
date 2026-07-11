@@ -111,8 +111,13 @@ describe("appReducer", () => {
     const settling = appReducer(routing, { type: "DIVE_STARTED" });
     expect(settling.phase).toBe("settling");
     expect(settling.view).toEqual({ level: "room", domain: "kitchen" });
+    expect(settling.evidenceVisible).toBe(false);
 
-    const verdict = appReducer(settling, { type: "VERDICT_SHOWN" });
+    const withEvidence = appReducer(settling, { type: "EVIDENCE_REVEALED" });
+    expect(withEvidence.phase).toBe("settling");
+    expect(withEvidence.evidenceVisible).toBe(true);
+
+    const verdict = appReducer(withEvidence, { type: "VERDICT_SHOWN" });
     expect(verdict.phase).toBe("verdict");
 
     const pulsing = appReducer(verdict, {
@@ -133,6 +138,7 @@ describe("appReducer", () => {
     expect(matched).toMatchObject({
       phase: "verdict",
       revealedChips: RESULT.capabilities.length,
+      evidenceVisible: true,
       view: { level: "room", domain: "kitchen" },
     });
 
@@ -145,6 +151,7 @@ describe("appReducer", () => {
     expect(noMatch).toMatchObject({
       phase: "verdict",
       revealedChips: RESULT.capabilities.length,
+      evidenceVisible: true,
       view: { level: "home" },
     });
   });
@@ -199,6 +206,7 @@ describe("appReducer", () => {
     const resting = initialState(INITIAL_IMPACT);
     expect(appReducer(resting, { type: "SCAN_STARTED" })).toBe(resting);
     expect(appReducer(resting, { type: "ROUTE_SHOWN" })).toBe(resting);
+    expect(appReducer(resting, { type: "EVIDENCE_REVEALED" })).toBe(resting);
     expect(appReducer(resting, { type: "VERDICT_SHOWN" })).toBe(resting);
   });
 

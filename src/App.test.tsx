@@ -18,6 +18,7 @@ vi.mock("./components/GraphCanvas", () => ({
         data-phase={props.phase}
         data-route-domain={props.routeDomain ?? ""}
         data-pulsing-slug={props.pulsingSlug ?? ""}
+        data-selected-item-id={props.selectedItemId ?? ""}
         data-view-key={props.viewKey}
       >
         <button
@@ -32,6 +33,19 @@ vi.mock("./components/GraphCanvas", () => ({
           }
         >
           Enter kitchen test room
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            props.onNodeClick({
+              id: "air-fryer",
+              kind: "item",
+              label: "Air fryer",
+              domain: "kitchen",
+            })
+          }
+        >
+          Select air fryer test item
         </button>
       </div>
     );
@@ -56,6 +70,40 @@ function setReducedMotion(matches: boolean) {
         dispatchEvent: vi.fn(() => false),
       }) as MediaQueryList,
   );
+}
+
+function controllableReducedMotion(initial = false) {
+  let matches = initial;
+  const listeners = new Set<(event: MediaQueryListEvent) => void>();
+  vi.spyOn(window, "matchMedia").mockImplementation(
+    (query: string) =>
+      ({
+        get matches() {
+          return matches;
+        },
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(
+          (_type: string, listener: (event: MediaQueryListEvent) => void) =>
+            listeners.add(listener),
+        ),
+        removeEventListener: vi.fn(
+          (_type: string, listener: (event: MediaQueryListEvent) => void) =>
+            listeners.delete(listener),
+        ),
+        dispatchEvent: vi.fn(() => false),
+      }) as MediaQueryList,
+  );
+
+  return {
+    set(next: boolean) {
+      matches = next;
+      const event = { matches: next } as MediaQueryListEvent;
+      listeners.forEach((listener) => listener(event));
+    },
+  };
 }
 
 function latestGraphProps(): GraphCanvasProps {
@@ -184,16 +232,52 @@ describe("FunctionGraph frontend contract", () => {
     expect(screen.queryByRole("button", { name: /Back to rooms/ })).not.toBeInTheDocument();
   });
 
-  it("updates the impact counter when the oven purchase is skipped", async () => {
+  it.each([
+    [OVEN_CHIP, "Convection countertop oven", 5],
+    [CABLE_CHIP, "4th USB-C cable", 3],
+    [DRONE_CHIP, "Mini camera drone", 4],
+  ])(
+    "maps every %s verdict row to exactly one ghost edge",
+    async (chip, productName, expectedRows) => {
+      setReducedMotion(true);
+      failedFetch();
+      render(<App />);
+      const user = await chooseExample(chip);
+      await screen.findByRole("heading", { name: productName });
+
+      const rows = screen.getAllByRole("button", {
+        name: /Highlight its graph edge$/,
+      });
+      expect(rows).toHaveLength(expectedRows);
+
+      for (const row of rows) {
+        await user.click(row);
+        const { pulsingSlug, graph } = latestGraphProps();
+        expect(pulsingSlug).toBeTruthy();
+        expect(
+          graph.edges.filter((edge) => edge.id === `ghost->${pulsingSlug}`),
+        ).toHaveLength(1);
+      }
+    },
+  );
+
+  it("clears the verdict when the oven purchase is skipped without the removed header", async () => {
     setReducedMotion(true);
     failedFetch();
     render(<App />);
+
+    expect(screen.queryByText("FunctionGraph")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Capability-level purchase decisions, mapped live."),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("$0 kept · 0.0 kg landfill avoided"),
+    ).not.toBeInTheDocument();
 
     const user = await chooseExample(OVEN_CHIP);
     await screen.findByRole("heading", { name: "Convection countertop oven" });
     await user.click(screen.getByRole("button", { name: "Skip this purchase" }));
 
-    expect(screen.getByText("$129 kept · 2.3 kg landfill avoided")).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: "Convection countertop oven" }),
     ).not.toBeInTheDocument();
@@ -241,6 +325,95 @@ describe("FunctionGraph frontend contract", () => {
       ),
     ).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("honours reduced motion when the preference changes during a pending evaluation", async () => {
+    const motion = controllableReducedMotion();
+    let resolveFetch!: (response: Response) => void;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveFetch = resolve;
+          }),
+      ),
+    );
+    render(<App />);
+    const user = userEvent.setup();
+
+    await user.type(
+      screen.getByLabelText("What are you considering?"),
+      "A live novelty product",
+    );
+    await user.click(screen.getByRole("button", { name: /Map capabilities/ }));
+
+    act(() => motion.set(true));
+    resolveFetch(
+      new Response(
+        JSON.stringify({
+          name: "Live novelty product",
+          price: null,
+          capabilities: [
+            { name: "captures aerial photos", tier: "primary" },
+            { name: "records aerial video", tier: "primary" },
+            { name: "flies preset routes", tier: "secondary" },
+          ],
+          verdict: {
+            coverage: 0,
+            coveredCount: 0,
+            totalCount: 3,
+            rows: [
+              {
+                capability: "captures aerial photos",
+                capSlug: "captures-aerial-photos",
+                tier: "primary",
+                covered: false,
+                bestCoverer: null,
+                covererCount: 0,
+                weight: 1,
+              },
+              {
+                capability: "records aerial video",
+                capSlug: "records-aerial-video",
+                tier: "primary",
+                covered: false,
+                bestCoverer: null,
+                covererCount: 0,
+                weight: 1,
+              },
+              {
+                capability: "flies preset routes",
+                capSlug: "flies-preset-routes",
+                tier: "secondary",
+                covered: false,
+                bestCoverer: null,
+                covererCount: 0,
+                weight: 0.4,
+              },
+            ],
+            newCapabilities: [
+              "captures aerial photos",
+              "records aerial video",
+              "flies preset routes",
+            ],
+            pricePerNewCapability: null,
+          },
+          altSuggestion: null,
+          cached: false,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Live novelty product" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("graph-canvas")).toHaveAttribute(
+      "data-phase",
+      "verdict",
+    );
+    expect(screen.getByText("3 / 3")).toBeInTheDocument();
   });
 
   it("runs all normal beats in order and holds the route toast for exactly 600 ms", async () => {
@@ -303,10 +476,27 @@ describe("FunctionGraph frontend contract", () => {
       "settling",
     );
     expect(latestGraphProps().viewKey).toBe("room:kitchen");
+    expect(
+      latestGraphProps().graph.edges.some((edge) => edge.id.startsWith("ghost->")),
+    ).toBe(false);
 
-    act(() =>
-      vi.advanceTimersByTime(TIMINGS.cameraMs + TIMINGS.settleMs - 1),
+    act(() => vi.advanceTimersByTime(TIMINGS.cameraMs - 1));
+    expect(screen.getByTestId("graph-canvas")).toHaveAttribute(
+      "data-phase",
+      "settling",
     );
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.getByTestId("graph-canvas")).toHaveAttribute(
+      "data-phase",
+      "settling",
+    );
+    expect(
+      latestGraphProps().graph.edges.filter((edge) =>
+        edge.id.startsWith("ghost->"),
+      ),
+    ).toHaveLength(5);
+
+    act(() => vi.advanceTimersByTime(TIMINGS.settleMs - 1));
     expect(screen.getByTestId("graph-canvas")).toHaveAttribute(
       "data-phase",
       "settling",
@@ -335,5 +525,34 @@ describe("FunctionGraph frontend contract", () => {
     expect(screen.getByRole("heading", { name: "Your capability map" })).toBeInTheDocument();
     expect(latestGraphProps().viewKey).toBe("home");
     expect(screen.queryByRole("button", { name: /Back to rooms/ })).not.toBeInTheDocument();
+  });
+
+  it("selects one item at a time so its connected capabilities can be highlighted", async () => {
+    setReducedMotion(false);
+    failedFetch();
+    render(<App />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Enter kitchen test room" }));
+    await user.click(
+      screen.getByRole("button", { name: "Select air fryer test item" }),
+    );
+
+    expect(latestGraphProps().selectedItemId).toBe("air-fryer");
+    expect(screen.getByTestId("graph-canvas")).toHaveAttribute(
+      "data-selected-item-id",
+      "air-fryer",
+    );
+    expect(
+      screen.getByText(
+        "Air fryer selected. Connected capabilities: crisps food with hot air, bakes food, reheats leftovers, toasts bread.",
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Select air fryer test item" }),
+    );
+    expect(latestGraphProps().selectedItemId).toBeNull();
+    expect(screen.getByText("Item selection cleared.")).toBeInTheDocument();
   });
 });
