@@ -4,7 +4,7 @@
 
 This is the repository's authoritative visual implementation guide. **`PDD.md` is the highest-precedence source of truth**—that is the actual specification filename in this repository. If this guide, the generated Linear reference, `README.md`, `CLAUDE.md`, `visualization-design.md`, code comments, or chat history conflicts with `PDD.md`, follow `PDD.md`. Do not alter normative requirement IDs, values, algorithms, state ordering, or scope through visual work.
 
-FunctionGraph is a precise, dark, technical decision tool: Linear-inspired interface discipline applied to a node-editor workspace. Keep the ultra-minimal dark shell, dense readable layout, surface ladder, hairline borders, compact controls, strong type hierarchy, and fast polish. The graph—not a marketing page or dashboard grid—is the product and the visual centre.
+FunctionGraph is a precise, bright, technical decision tool: Linear-inspired interface discipline applied to a node-editor workspace. Keep the ultra-minimal white shell, dense readable layout, light neutral surface ladder, hairline borders, compact controls, strong type hierarchy, and fast polish. The graph—not a marketing page or dashboard grid—is the product and the visual centre.
 
 It must not resemble a generic SaaS landing page, a collection of unrelated cards, a colourful analytics dashboard, neon cyberpunk, glassmorphism, a Linear issue-tracker clone, or a marketing homepage wrapped around a graph.
 
@@ -24,20 +24,20 @@ Use CSS custom properties or map these exact values into the existing token syst
 
 ```css
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  --background: #08090a;
-  --surface-1: #0d0e10;
-  --surface-2: #121316;
-  --surface-3: #18191d;
+  --background: #ffffff;
+  --surface-1: #ffffff;
+  --surface-2: #f4f6f8;
+  --surface-3: #e8edf1;
 
-  --border-subtle: rgba(255, 255, 255, 0.07);
-  --border-default: rgba(255, 255, 255, 0.11);
-  --border-strong: rgba(255, 255, 255, 0.18);
+  --border-subtle: rgba(23, 33, 43, 0.09);
+  --border-default: rgba(23, 33, 43, 0.16);
+  --border-strong: rgba(23, 33, 43, 0.28);
 
-  --text-primary: #f2f3f5;
-  --text-secondary: #a3a6ad;
-  --text-muted: #6f737b;
+  --text-primary: #17212b;
+  --text-secondary: #4d5966;
+  --text-muted: #75818d;
 
   --covered: #ff765f;
   --new: #57c785;
@@ -59,6 +59,8 @@ Use CSS custom properties or map these exact values into the existing token syst
 
 The surface ladder supplies depth: background → surface 1 → surface 2 → surface 3. Use one-pixel hairlines and, at most, restrained local shadows for overlays. Do not add decorative gradients, atmospheric lighting, glass blur, large floating rounded cards, or a new chromatic focus/brand colour. Use a neutral high-contrast focus outline.
 
+Node types may use low-chroma neutral temperature for recognition: owned items use a cool light slate, while capability pills use a warm light neutral. These are structural type cues, never verdict or status colours; coral and green retain their exclusive covered/new meanings.
+
 Amber has no general semantic token. If an existing amber is used, confine it to the badge inside a home-level hotspot room; never use it for warnings, actions, verdicts, edges, focus, or room fills. Do not introduce blue, purple, cyan, pink, or yellow status colours. Linear lavender is not part of FunctionGraph.
 
 ## Typography, shape, and density
@@ -72,7 +74,7 @@ font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
 
 - Use sentence case everywhere and the fixed vocabulary in `PDD.md`.
 - Prefer 12–16px working text, compact 18–24px headings, medium weights, tight but readable line heights, and restrained negative tracking only on headings.
-- Use `font-variant-numeric: tabular-nums` for prices, percentages, scores, coverage counts, and the impact counter.
+- Use `font-variant-numeric: tabular-nums` for prices, percentages, scores, and coverage counts.
 - Use `--text-secondary` and `--text-muted` for supporting copy; never solve hierarchy with many colours.
 - Do not place a giant hero heading in the application.
 - Use only the 4, 8, 12, 16, 20, 24, 32 spacing scale.
@@ -81,11 +83,9 @@ font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
 
 ## Application composition
 
-Use one compact app shell containing:
+Use one compact app shell without a persistent top header. It contains:
 
-- FunctionGraph wordmark or text logo;
-- a quiet one-line description where useful;
-- the impact counter (`$X kept · Y kg landfill avoided`);
+- the purchase-evaluation title and one-line explanation;
 - a back control whenever the user is off home level;
 - product command bar and mandatory example chips;
 - the graph workspace, route toast, and verdict panel.
@@ -94,7 +94,7 @@ The graph occupies most of the available viewport and most desktop width. Do not
 
 ### Product command bar
 
-Treat product entry as a precise command-bar control: compact but prominent, on an elevated graphite surface, with a thin border, integrated submit action, visible neutral keyboard focus, and resilient wrapping for long input. Errors are friendly inline text that explains the next step; never apologize. The arrival flow has no spinner because the full result is fetched before choreography starts.
+Treat product entry as a precise command-bar control: compact but prominent, on a clean white surface, with a thin border, integrated submit action, visible neutral keyboard focus, and resilient wrapping for long input. Keep it vertically tight so the graph receives the majority of the viewport. Errors are friendly inline text that explains the next step; never apologize. The arrival flow has no spinner because the full result is fetched before choreography starts.
 
 Always expose these exact one-tap demo strings, matching the demo cache:
 
@@ -106,18 +106,20 @@ Chips wrap or scroll horizontally rather than shrinking below legibility.
 
 ## Graph workspace
 
-Home and room views are data swaps and camera moves on the same force-directed canvas. Keep drag, zoom, pan, room navigation, and force behaviour intact. Use a subtle dark dotted node-editor background; avoid strong grid lines and visually loud canvas controls.
+Home and room views are data swaps and camera moves on the same force-directed canvas. Keep drag, zoom, pan, room navigation, and force behaviour intact. Use a white dotted node-editor background with faint neutral dots; avoid strong grid lines and visually loud canvas controls. On desktop, the app shell fits the viewport without a document scrollbar so the graph receives the remaining height.
 
 Never hardcode node positions or domain membership. Seed structural updates from current positions, let clusters emerge from shared capabilities, allow the simulation to cool fully, and never add idle motion. Reheat only for structural change: phase, expansion, a new result, or local drag. Hover, selection, row pulse, and other cosmetic highlights must not reheat the full simulation.
+
+The relationship hierarchy is home room → owned item → capability. Entering a room swaps the same canvas to its item/capability graph. Owned items connect only to capability hubs or their revealed unique mini-capabilities; item-to-item edges are forbidden. Selecting an item applies a neutral emphasis to that item, every connected capability node, and their inventory edges while visibly dimming unrelated nodes and inventory edges. It must not recolour verdict semantics or reheat physics unless unique mini-capabilities are structurally revealed.
 
 ### Node taxonomy
 
 | Node | Required treatment |
 |---|---|
-| Item chip | Compact horizontal graphite chip with a small item dot, item name, optional `+N` unique-capability indicator, thin neutral border, and no glow. |
+| Item node | Adaptive cool-slate circle with a small item dot, centred wrapped item name, optional `+N` unique-capability indicator, thin border, and no glow. Derive its capped diameter from word count, wrapped-line count, longest line, and badge space. Selection neutrally highlights all connected capability nodes and edges. |
 | Capability hub | Neutral pill with a clear lowercase capability label. Degree may change prominence; hot hubs get stronger neutral emphasis, never category colours. Visible only under the hub rules in `PDD.md`. |
 | New capability hub | Green border, restrained green tint, and slightly more weight than a normal hub. No glow. |
-| Ghost | Dashed coral chip showing name, price when known, and `considering`. Coral text or restrained tint. It is the only glowing node; keep the glow subtle. |
+| Ghost | Dashed coral circle showing the wrapped product name, price when known, and `considering`. Size the diameter from the product's word count and longest wrapped line, with a firm maximum so it cannot dominate the graph. It is the only glowing node; keep the glow subtle. |
 | Mini capability | Small, dim, dashed pill hidden until its item expands. Allow one expanded item at a time. |
 | Room | Neutral circle sized by item count with a clear label. A home-level hotspot may carry the only amber badge. The routed room receives announced emphasis. |
 | Unscanned room | Dim, dashed room with a semantic “scan this room” action. |
@@ -166,7 +168,7 @@ Row activation resolves its single corresponding edge by ID and pulses exactly t
 
 Actions are:
 
-- Primary: `Skip this purchase`—update the impact counter in the same viewport.
+- Primary: `Skip this purchase`—close the verdict and preserve the impact update in application state.
 - Secondary: `I still need it`—reveal `What's it for? teaches the graph`, then preserve the existing Buy anyway path.
 
 Do not frame the tool as a blocker or remove the Buy path.
@@ -273,7 +275,7 @@ Keep graph and verdict data derived, never duplicated. Do not hardcode verdict p
 ### Do
 
 - Make the graph the protagonist and the shell a quiet frame.
-- Use the exact graphite ladder, hairlines, compact spacing, and small radii.
+- Use the exact light neutral ladder, hairlines, compact spacing, and small radii.
 - Use coral only for covered/redundant evidence and green only for genuinely new evidence.
 - Reserve amber for home hotspot badges and glow for the ghost, apart from the brief VIS-4 pulse exception.
 - Keep panels dense, typography calm, controls compact, and supporting text muted.

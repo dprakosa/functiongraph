@@ -272,6 +272,14 @@ export default function App() {
       : `${titleCase(state.view.domain)} room`;
   const viewKey =
     state.view.level === "home" ? "home" : `room:${state.view.domain}`;
+  const selectedItem = state.expandedItemId
+    ? inventory.items.find((item) => item.id === state.expandedItemId) ?? null
+    : null;
+  const itemSelectionStatus = selectedItem
+    ? `${selectedItem.name} selected. Connected capabilities: ${selectedItem.capabilities
+        .map((capability) => capability.name)
+        .join(", ")}.`
+    : "Item selection cleared.";
 
   const startEvaluation = async (rawText: string) => {
     const text = rawText.trim();
@@ -329,24 +337,6 @@ export default function App() {
 
   return (
     <main className="app-shell">
-      <header className="app-header">
-        <a className="brand" href="#top" aria-label="FunctionGraph home">
-          <span className="brand__mark" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </span>
-          <span>FunctionGraph</span>
-        </a>
-        <p className="app-header__promise">
-          Capability-level purchase decisions, mapped live.
-        </p>
-        <output className="impact-counter" aria-live="polite">
-          <span className="impact-counter__dot" aria-hidden="true" />
-          {copy.impact(state.impact.dollarsKept, state.impact.kgAvoided)}
-        </output>
-      </header>
-
       <section className="intro" id="top" aria-labelledby="intro-title">
         <div className="intro__copy">
           <p className="eyebrow">Purchase evaluation</p>
@@ -427,7 +417,8 @@ export default function App() {
             <div className="graph-legend" aria-label="Graph legend">
               <span><i className="legend-covered" /> covered</span>
               <span><i className="legend-new" /> new</span>
-              <span><i className="legend-owned" /> owned</span>
+              <span><i className="legend-item" /> item</span>
+              <span><i className="legend-capability" /> capability</span>
             </div>
           </div>
 
@@ -438,17 +429,27 @@ export default function App() {
               routeDomain={state.route?.domain ?? null}
               routingActive={state.phase === "routing"}
               pulsingSlug={state.pulsingSlug}
+              selectedItemId={state.expandedItemId}
               reducedMotion={reducedMotion}
               viewKey={viewKey}
               onNodeClick={handleNodeClick}
               onZoomOut={() => dispatch({ type: "WENT_HOME" })}
             />
+            <p
+              className="visually-hidden"
+              id="item-selection-status"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {itemSelectionStatus}
+            </p>
 
             {state.phase === "resting" && state.view.level === "home" && (
               <p className="canvas-hint">Tap a room, or map a product above</p>
             )}
             {state.phase === "resting" && state.view.level === "room" && (
-              <p className="canvas-hint">Tap an item to reveal its unique capabilities</p>
+              <p className="canvas-hint">Tap an item to highlight its capabilities</p>
             )}
             {statusMessage && (
               <div

@@ -18,6 +18,7 @@ vi.mock("./components/GraphCanvas", () => ({
         data-phase={props.phase}
         data-route-domain={props.routeDomain ?? ""}
         data-pulsing-slug={props.pulsingSlug ?? ""}
+        data-selected-item-id={props.selectedItemId ?? ""}
         data-view-key={props.viewKey}
       >
         <button
@@ -32,6 +33,19 @@ vi.mock("./components/GraphCanvas", () => ({
           }
         >
           Enter kitchen test room
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            props.onNodeClick({
+              id: "air-fryer",
+              kind: "item",
+              label: "Air fryer",
+              domain: "kitchen",
+            })
+          }
+        >
+          Select air fryer test item
         </button>
       </div>
     );
@@ -247,16 +261,23 @@ describe("FunctionGraph frontend contract", () => {
     },
   );
 
-  it("updates the impact counter when the oven purchase is skipped", async () => {
+  it("clears the verdict when the oven purchase is skipped without the removed header", async () => {
     setReducedMotion(true);
     failedFetch();
     render(<App />);
+
+    expect(screen.queryByText("FunctionGraph")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Capability-level purchase decisions, mapped live."),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("$0 kept · 0.0 kg landfill avoided"),
+    ).not.toBeInTheDocument();
 
     const user = await chooseExample(OVEN_CHIP);
     await screen.findByRole("heading", { name: "Convection countertop oven" });
     await user.click(screen.getByRole("button", { name: "Skip this purchase" }));
 
-    expect(screen.getByText("$129 kept · 2.3 kg landfill avoided")).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: "Convection countertop oven" }),
     ).not.toBeInTheDocument();
@@ -504,5 +525,34 @@ describe("FunctionGraph frontend contract", () => {
     expect(screen.getByRole("heading", { name: "Your capability map" })).toBeInTheDocument();
     expect(latestGraphProps().viewKey).toBe("home");
     expect(screen.queryByRole("button", { name: /Back to rooms/ })).not.toBeInTheDocument();
+  });
+
+  it("selects one item at a time so its connected capabilities can be highlighted", async () => {
+    setReducedMotion(false);
+    failedFetch();
+    render(<App />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Enter kitchen test room" }));
+    await user.click(
+      screen.getByRole("button", { name: "Select air fryer test item" }),
+    );
+
+    expect(latestGraphProps().selectedItemId).toBe("air-fryer");
+    expect(screen.getByTestId("graph-canvas")).toHaveAttribute(
+      "data-selected-item-id",
+      "air-fryer",
+    );
+    expect(
+      screen.getByText(
+        "Air fryer selected. Connected capabilities: crisps food with hot air, bakes food, reheats leftovers, toasts bread.",
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Select air fryer test item" }),
+    );
+    expect(latestGraphProps().selectedItemId).toBeNull();
+    expect(screen.getByText("Item selection cleared.")).toBeInTheDocument();
   });
 });

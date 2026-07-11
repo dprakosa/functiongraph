@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef } from "react";
 import * as d3 from "d3";
 import type { GraphData, GraphEdgeDatum, GraphNodeDatum } from "../graph/buildGraph";
-import { GHOST_ID } from "../graph/buildGraph";
+import {
+  deriveItemCapabilitySelection,
+  GHOST_ID,
+} from "../graph/buildGraph";
 import type { Phase } from "../state/appReducer";
 import { TIMINGS } from "../state/useBeats";
 
@@ -22,6 +25,7 @@ export interface GraphCanvasProps {
   routeDomain: string | null;
   routingActive: boolean;
   pulsingSlug: string | null;
+  selectedItemId: string | null;
   reducedMotion: boolean;
   /** set when a view change was just announced (route toast) or user-initiated */
   viewKey: string;
@@ -34,6 +38,45 @@ const GHOST_PIN_PHASES: ReadonlySet<Phase> = new Set([
   "scanning",
   "routing",
 ]);
+
+function itemLabelLines(label: string): string[] {
+  if (label.length <= 11 || !label.includes(" ")) return [label];
+  return balancedWordLines(label, 3);
+}
+
+function balancedWordLines(label: string, maxLines: number): string[] {
+  const words = label.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= 1) return words.length === 0 ? [label] : words;
+
+  const lineCount = Math.min(
+    maxLines,
+    words.length === 2 && label.length > 11 ? 2 : Math.ceil(words.length / 2),
+  );
+  const lines: string[] = [];
+  let wordIndex = 0;
+
+  for (let lineIndex = 0; lineIndex < lineCount; lineIndex += 1) {
+    const remainingLines = lineCount - lineIndex;
+    const remainingWords = words.slice(wordIndex);
+    if (remainingLines === 1) {
+      lines.push(remainingWords.join(" "));
+      break;
+    }
+
+    const remainingCharacters = remainingWords.join(" ").length;
+    const targetLength = Math.ceil(remainingCharacters / remainingLines);
+    const lineWords: string[] = [];
+    while (wordIndex < words.length - (remainingLines - 1)) {
+      const candidate = [...lineWords, words[wordIndex]].join(" ");
+      if (lineWords.length > 0 && candidate.length > targetLength) break;
+      lineWords.push(words[wordIndex]);
+      wordIndex += 1;
+    }
+    lines.push(lineWords.join(" "));
+  }
+
+  return lines;
+}
 
 function nodeDimensions(node: GraphNodeDatum): {
   width: number;
@@ -50,21 +93,47 @@ function nodeDimensions(node: GraphNodeDatum): {
     case "room-unscanned":
       return { width: 80, height: 80, collideRadius: 48 };
     case "item": {
-      const width = Math.max(88, 34 + len * 6.8);
-      return { width, height: 30, collideRadius: width / 2 + 8 };
+      const words = node.label.trim().split(/\s+/).filter(Boolean);
+      const lines = itemLabelLines(node.label);
+      const longestLine = Math.max(...lines.map((line) => line.length));
+      const diameter = Math.min(
+        124,
+        Math.max(
+          78,
+          50 + longestLine * 5.4,
+          76 + Math.max(0, lines.length - 1) * 16 + (node.badge ? 10 : 0),
+          72 + Math.max(0, words.length - 1) * 6,
+        ),
+      );
+      return {
+        width: diameter,
+        height: diameter,
+        collideRadius: diameter / 2 + 8,
+      };
     }
     case "hub":
     case "hub-new": {
-      const width = 22 + len * 6.3;
-      return { width, height: 24, collideRadius: width / 2 + 7 };
+      const width = 28 + len * 6.8;
+      return { width, height: 28, collideRadius: width / 2 + 8 };
     }
     case "ghost": {
-      const width = Math.max(170, 40 + Math.min(len, 34) * 6.4);
-      return { width, height: 44, collideRadius: width / 2 + 10 };
+      const [name] = node.label.split(" · ");
+      const words = name.trim().split(/\s+/).filter(Boolean);
+      const lines = balancedWordLines(name, 3);
+      const longestLine = Math.max(...lines.map((line) => line.length));
+      const diameter = Math.min(
+        156,
+        Math.max(104, 82 + longestLine * 4, 96 + Math.max(0, words.length - 1) * 8),
+      );
+      return {
+        width: diameter,
+        height: diameter,
+        collideRadius: diameter / 2 + 10,
+      };
     }
     case "mini": {
-      const width = 16 + len * 5.6;
-      return { width, height: 20, collideRadius: width / 2 + 5 };
+      const width = 22 + len * 6.1;
+      return { width, height: 24, collideRadius: width / 2 + 6 };
     }
   }
 }
@@ -75,6 +144,21 @@ function endpointId(endpoint: string | ForceNode): string {
 
 function isInteractiveNode(node: GraphNodeDatum): boolean {
   return node.kind === "room" || node.kind === "room-unscanned" || node.kind === "item";
+}
+
+function accessibleNodeKind(node: GraphNodeDatum): string {
+  switch (node.kind) {
+    case "hub":
+      return "capability";
+    case "hub-new":
+      return "new capability";
+    case "mini":
+      return "unique capability";
+    case "room-unscanned":
+      return "unscanned room";
+    default:
+      return node.kind;
+  }
 }
 
 function buildNodeBody(
@@ -124,66 +208,71 @@ function buildNodeBody(
 
     if (node.kind === "ghost") {
       const [name, ...rest] = node.label.split(" · ");
+      const lines = balancedWordLines(name, 3);
+      const lineHeight = 16;
+      const contentHeight = lines.length * lineHeight + (rest.length ? 22 : 0);
+      const startY = -contentHeight / 2 + 12;
       body
-        .append("rect")
+        .append("circle")
         .attr("class", "gnode__shape")
-        .attr("x", -width / 2)
-        .attr("y", -height / 2)
-        .attr("width", width)
-        .attr("height", height)
-        .attr("rx", 11);
-      body
+        .attr("r", width / 2);
+      const label = body
         .append("text")
         .attr("class", "gnode__label")
-        .attr("text-anchor", "middle")
-        .attr("y", rest.length ? -3 : 4)
-        .text(name);
+        .attr("text-anchor", "middle");
+      lines.forEach((line, index) => {
+        label
+          .append("tspan")
+          .attr("x", 0)
+          .attr("y", startY + index * lineHeight)
+          .text(line);
+      });
       if (rest.length) {
         body
           .append("text")
           .attr("class", "gnode__sub")
           .attr("text-anchor", "middle")
-          .attr("y", 13)
+          .attr("y", startY + lines.length * lineHeight + 7)
           .text(rest.join(" · "));
       }
       return;
     }
 
     if (node.kind === "item") {
+      const radius = width / 2;
+      const lines = itemLabelLines(node.label);
+      const lineHeight = 16;
+      const startY = lines.length === 1 ? 5 : 4 - ((lines.length - 1) * lineHeight) / 2;
       body
-        .append("rect")
+        .append("circle")
         .attr("class", "gnode__hit")
-        .attr("x", -width / 2 - 5)
-        .attr("y", -22)
-        .attr("width", width + 10)
-        .attr("height", 44)
-        .attr("rx", 12);
+        .attr("r", radius + 7);
       body
-        .append("rect")
+        .append("circle")
         .attr("class", "gnode__shape")
-        .attr("x", -width / 2)
-        .attr("y", -height / 2)
-        .attr("width", width)
-        .attr("height", height)
-        .attr("rx", 9);
+        .attr("r", radius);
       body
         .append("circle")
         .attr("class", "gnode__dot")
-        .attr("cx", -width / 2 + 12)
+        .attr("cy", startY - 22)
         .attr("r", 3.5);
-      body
+      const label = body
         .append("text")
         .attr("class", "gnode__label")
-        .attr("x", -width / 2 + 21)
-        .attr("y", 4)
-        .text(node.label);
+        .attr("text-anchor", "middle");
+      lines.forEach((line, index) => {
+        label
+          .append("tspan")
+          .attr("x", 0)
+          .attr("y", startY + index * lineHeight)
+          .text(line);
+      });
       if (node.badge) {
         body
           .append("text")
           .attr("class", "gnode__badge")
-          .attr("x", width / 2 - 8)
-          .attr("text-anchor", "end")
-          .attr("y", 4)
+          .attr("text-anchor", "middle")
+          .attr("y", startY + lines.length * lineHeight + 8)
           .text(`+${node.badge}`);
       }
       return;
@@ -213,11 +302,16 @@ export function GraphCanvas({
   routeDomain,
   routingActive,
   pulsingSlug,
+  selectedItemId,
   reducedMotion,
   viewKey,
   onNodeClick,
   onZoomOut,
 }: GraphCanvasProps) {
+  const itemCapabilitySelection = useMemo(
+    () => deriveItemCapabilitySelection(graph, selectedItemId),
+    [graph, selectedItemId],
+  );
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<d3.Selection<SVGSVGElement, unknown, null, undefined> | null>(null);
   const viewportRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
@@ -361,7 +455,17 @@ export function GraphCanvas({
       .alphaDecay(0.07)
       .velocityDecay(0.45);
 
-    simulation.on("tick", renderSimulationFrame);
+    simulation.on("tick", () => {
+      renderSimulationFrame();
+      // Refit once the force layout is effectively settled. Waiting only for
+      // the final `end` event can leave the camera framed around an earlier,
+      // tighter cluster when layout and viewport resizing overlap.
+      if (fitPendingRef.current && simulation.alpha() <= 0.01) {
+        fitPendingRef.current = false;
+        fitView(initialFitDoneRef.current ? TIMINGS.cameraMs : 0);
+        initialFitDoneRef.current = true;
+      }
+    });
 
     simulation.on("end", () => {
       if (fitPendingRef.current) {
@@ -506,7 +610,12 @@ export function GraphCanvas({
           group
             .transition()
             .duration(reducedMotion ? 0 : 220)
-            .style("opacity", 1);
+            .style("opacity", 1)
+            .on("end", function () {
+              // Keep entry animation inline styles from overriding later
+              // selection-focus opacity classes.
+              d3.select(this).style("opacity", null);
+            });
           return group;
         },
         (update) => update,
@@ -526,7 +635,7 @@ export function GraphCanvas({
       .attr("tabindex", (node) => (isInteractiveNode(node) ? 0 : null))
       .attr("data-node-id", (node) => node.id)
       .attr("aria-label", (node) =>
-        `${node.label}${node.sub ? `, ${node.sub}` : ""}, ${node.kind.replaceAll("-", " ")}`,
+        `${node.label}${node.sub ? `, ${node.sub}` : ""}, ${accessibleNodeKind(node)}`,
       )
       .attr(
         "transform",
@@ -544,6 +653,10 @@ export function GraphCanvas({
         }
       });
 
+    const dragState = new WeakMap<
+      ForceNode,
+      { startX: number; startY: number; moved: boolean }
+    >();
     const drag = d3
       .drag<SVGGElement, ForceNode>()
       .filter((_event, node) =>
@@ -551,17 +664,37 @@ export function GraphCanvas({
       )
       .on("start", (event, node) => {
         event.sourceEvent?.stopPropagation();
-        // Ambient: drag reheats locally then cools (INT ambient rule).
-        if (!event.active) simulation.alphaTarget(0.12).restart();
+        // A click and a drag share pointer-down. Pin provisionally, but do not
+        // reheat until the pointer actually moves far enough to be a drag.
+        dragState.set(node, {
+          startX: event.x,
+          startY: event.y,
+          moved: false,
+        });
         node.fx = node.x;
         node.fy = node.y;
       })
       .on("drag", (event, node) => {
+        const state = dragState.get(node);
+        if (
+          state &&
+          !state.moved &&
+          Math.hypot(event.x - state.startX, event.y - state.startY) < 3
+        ) {
+          return;
+        }
+        if (state && !state.moved) {
+          state.moved = true;
+          // Ambient: a real drag reheats locally, then cools (INT rule).
+          simulation.alphaTarget(0.12).restart();
+        }
         node.fx = event.x;
         node.fy = event.y;
       })
       .on("end", (event, node) => {
-        if (!event.active) simulation.alphaTarget(0);
+        const state = dragState.get(node);
+        if (state?.moved && !event.active) simulation.alphaTarget(0);
+        dragState.delete(node);
         if (!(node.kind === "ghost" && GHOST_PIN_PHASES.has(phase))) {
           node.fx = null;
           node.fy = null;
@@ -652,6 +785,37 @@ export function GraphCanvas({
         "is-winner",
         (node) =>
           routingActive && node.kind === "room" && node.label === routeDomain,
+      )
+      .classed(
+        "is-selected-item",
+        (node) => node.kind === "item" && node.id === selectedItemId,
+      )
+      .classed(
+        "is-connected-capability",
+        (node) => itemCapabilitySelection.nodeIds.has(node.id),
+      )
+      .classed(
+        "is-unrelated-capability",
+        (node) =>
+          selectedItemId != null &&
+          (node.kind === "hub" || node.kind === "mini") &&
+          !itemCapabilitySelection.nodeIds.has(node.id),
+      )
+      .classed(
+        "is-selection-muted",
+        (node) =>
+          selectedItemId != null &&
+          (node.kind === "item" || node.kind === "hub" || node.kind === "mini") &&
+          node.id !== selectedItemId &&
+          !itemCapabilitySelection.nodeIds.has(node.id),
+      )
+      .attr("aria-pressed", (node) =>
+        node.kind === "item" ? String(node.id === selectedItemId) : null,
+      )
+      .attr("aria-describedby", (node) =>
+        node.kind === "item" && node.id === selectedItemId
+          ? "item-selection-status"
+          : null,
       );
 
     scanSelection?.classed(
@@ -664,6 +828,17 @@ export function GraphCanvas({
 
     edgeSelection
       ?.classed(
+        "is-connected-inventory",
+        (edge) => itemCapabilitySelection.edgeIds.has(edge.id),
+      )
+      .classed(
+        "is-selection-muted",
+        (edge) =>
+          selectedItemId != null &&
+          edge.kind === "inventory" &&
+          !itemCapabilitySelection.edgeIds.has(edge.id),
+      )
+      .classed(
         "is-pulsing",
         (edge) =>
           !reducedMotion &&
@@ -677,7 +852,15 @@ export function GraphCanvas({
           pulsingSlug != null &&
           edge.id === `ghost->${pulsingSlug}`,
       );
-  }, [routingActive, routeDomain, pulsingSlug, reducedMotion, signature]);
+  }, [
+    itemCapabilitySelection,
+    pulsingSlug,
+    reducedMotion,
+    routeDomain,
+    routingActive,
+    selectedItemId,
+    signature,
+  ]);
 
   // A preference change can arrive while the simulation or an eased camera
   // transition is in flight. Stop both immediately; the App reducer moves the
@@ -694,5 +877,11 @@ export function GraphCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reducedMotion]);
 
-  return <div ref={containerRef} className="graph-canvas" data-testid="graph-canvas" />;
+  return (
+    <div
+      ref={containerRef}
+      className={`graph-canvas${selectedItemId ? " has-item-focus" : ""}`}
+      data-testid="graph-canvas"
+    />
+  );
 }

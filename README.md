@@ -17,7 +17,7 @@ single Vercel-compatible evaluation endpoint. There is no database or
 persistence.
 
 Visual implementation follows [DESIGN.md](./DESIGN.md), which combines a
-Linear-inspired dark, compact interface discipline with FunctionGraph's
+Linear-inspired bright, compact interface discipline with FunctionGraph's
 graph-first layout and fixed coral/green semantic colour law. `PDD.md` remains
 higher precedence whenever the two documents differ.
 
@@ -54,9 +54,9 @@ coverage math.
 - Paste a product or tap an example to run extract, scan, route, settle, and
   verdict beats.
 - Pan or wheel-zoom the canvas and drag graph nodes.
-- Tap an item to reveal its unique capabilities.
+- Tap an item to highlight every connected capability and reveal its unique capabilities.
 - Tap a verdict row to highlight exactly its graph edge.
-- Skip a purchase to update the impact counter, or choose “I still need it”
+- Skip a purchase to record the avoided impact, or choose “I still need it”
   and record a reason before buying anyway.
 - Use the responsive stacked layout on phones; reduced-motion preferences skip
   the choreography and retain static evidence highlighting.

@@ -61,6 +61,36 @@ export interface GraphData {
   edges: GraphEdgeDatum[];
 }
 
+export interface ItemCapabilitySelection {
+  nodeIds: ReadonlySet<string>;
+  edgeIds: ReadonlySet<string>;
+}
+
+/**
+ * Derive the capability evidence connected to one owned item. Inventory
+ * edges are the only allowed item relationship: item -> hub/mini capability.
+ * Keeping this as graph-derived cosmetic state prevents selection from
+ * duplicating inventory data or reheating the simulation.
+ */
+export function deriveItemCapabilitySelection(
+  graph: GraphData,
+  itemId: string | null,
+): ItemCapabilitySelection {
+  const nodeIds = new Set<string>();
+  const edgeIds = new Set<string>();
+  if (!itemId) return { nodeIds, edgeIds };
+  const kindById = new Map(graph.nodes.map((node) => [node.id, node.kind]));
+
+  graph.edges.forEach((edge) => {
+    if (edge.kind !== "inventory" || edge.source !== itemId) return;
+    const targetKind = kindById.get(edge.target);
+    if (targetKind !== "hub" && targetKind !== "mini") return;
+    nodeIds.add(edge.target);
+    edgeIds.add(edge.id);
+  });
+  return { nodeIds, edgeIds };
+}
+
 interface BuildArgs {
   items: Item[];
   unscannedRooms: string[];
