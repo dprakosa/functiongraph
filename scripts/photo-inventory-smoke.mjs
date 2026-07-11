@@ -323,17 +323,22 @@ async function main() {
     assertStatus(foreignDelete, 404, "inventory-cross-user-delete");
 
     tokenA = await sessionToken(sessionA.id);
+    const confirmedFunctions = candidate.capabilities
+      .map((capability) => capability.name)
+      .join(", ");
     const evaluation = await requestJson("evaluation.inventory", "/api/evaluate", {
       method: "POST",
       token: tokenA,
-      body: { text: "Convection countertop oven — $129" },
+      body: {
+        text: `A basic household toaster. Existing functions: ${confirmedFunctions}.`,
+      },
     });
     assertStatus(evaluation, 200, "evaluation-inventory");
     assertNoStore(evaluation, "evaluation-inventory");
-    const toastRow = evaluation.body?.verdict?.rows?.find(
-      (row) => row?.capability === "toasts bread",
+    const coveredByConfirmedItem = evaluation.body?.verdict?.rows?.some(
+      (row) => row?.covered && row?.bestCoverer === candidate.name,
     );
-    if (!toastRow?.covered) {
+    if (!coveredByConfirmedItem) {
       throw new SmokeFailure("evaluation-inventory-not-used", evaluation.status);
     }
 

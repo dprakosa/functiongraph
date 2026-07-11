@@ -67,7 +67,8 @@ documented protection-bypass header and never prints it.
 
 The script checks sanitized signed-out responses, creates two synthetic Clerk
 users and Backend API sessions, scans the fixture, confirms one toaster candidate, reloads
-it, proves the cached oven verdict uses that inventory, checks cross-user
+it, runs a live toaster evaluation against the confirmed function vocabulary,
+proves the verdict names that stored item as a coverer, checks cross-user
 read/update/delete isolation, edits and reloads, then deletes and reloads.
 
 Clerk Backend API session tokens are sent only in the `Authorization` header.
