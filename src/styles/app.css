@@ -703,6 +703,102 @@ button:disabled {
   transition: background-color 180ms ease;
 }
 
+.graph-canvas__stage {
+  position: absolute;
+  inset: 0;
+}
+
+.graph-tooltip {
+  position: absolute;
+  z-index: 6;
+  width: min(280px, calc(100% - 16px));
+  max-height: calc(100% - 16px);
+  overflow: hidden;
+  padding: 11px 12px;
+  visibility: hidden;
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--surface-1);
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
+.graph-tooltip__eyebrow {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text-muted);
+  font-size: 8.5px;
+  font-weight: 760;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.graph-tooltip__title {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 680;
+  letter-spacing: -0.015em;
+}
+
+.graph-tooltip__status {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.graph-tooltip__details {
+  display: grid;
+  gap: 4px;
+  margin: 9px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.graph-tooltip__details > div {
+  display: grid;
+  grid-template-columns: minmax(74px, 0.55fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.graph-tooltip__details dt {
+  color: var(--text-muted);
+}
+
+.graph-tooltip__details dd {
+  margin: 0;
+  color: var(--text-secondary);
+  font-weight: 620;
+  text-align: right;
+}
+
+.graph-tooltip__preview {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.graph-tooltip__preview span {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--text-muted);
+  font-size: 8.5px;
+  font-weight: 720;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.graph-tooltip__action {
+  margin: 9px 0 0;
+  padding-top: 8px;
+  color: var(--text-primary);
+  border-top: 1px solid var(--border-subtle);
+  font-weight: 680;
+}
+
 .graph-canvas.has-item-focus {
   background-color: rgba(23, 33, 43, 0.045);
 }
@@ -725,6 +821,11 @@ button:disabled {
 
 .gnode:focus-visible {
   outline: none;
+}
+
+.gnode.has-visible-tooltip .gnode__shape {
+  stroke: var(--text-secondary);
+  stroke-width: 1.8px;
 }
 
 .gnode__hit {
