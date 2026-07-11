@@ -20,9 +20,16 @@ describe("norm (API-3)", () => {
     );
     expect(norm("4th USB-C cable — $15")).toBe("4th usb c cable");
     expect(norm("thing $129.99")).toBe("thing");
+    expect(norm("thing A$129.99")).toBe("thing");
+    expect(norm("thing — AUD 1,299.95")).toBe("thing");
+    expect(norm("thing 129 USD")).toBe("thing");
   });
 
-  it("keeps leading digits that are part of the name", () => {
+  it("keeps digits that are part of a product or version name", () => {
     expect(norm("4th usb c cable")).toBe("4th usb c cable");
+    expect(norm("Pixel 9")).toBe("pixel 9");
+    expect(norm("PlayStation 5")).toBe("playstation 5");
+    expect(norm("USB hub v2")).toBe("usb hub v2");
+    expect(norm("Camera 129")).toBe("camera 129");
   });
 });

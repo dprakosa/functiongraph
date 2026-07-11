@@ -1,5 +1,10 @@
 import { deriveVocabulary } from "../../src/lib/vocabulary";
-import type { Item, ProductDecomposition, Tier } from "../../src/lib/types";
+import type {
+  Capability,
+  Item,
+  ProductDecomposition,
+  Tier,
+} from "../../src/lib/types";
 
 /**
  * Live evaluation path (API-2 step 3): structured LLM decomposition (API-4)
@@ -13,18 +18,46 @@ export class LiveUnavailableError extends Error {}
 export const SNAP_THRESHOLD = 0.83;
 
 const OPENAI_BASE = "https://api.openai.com/v1";
+const IMMUTABLE_SNAPSHOT_SUFFIX = /-\d{4}-\d{2}-\d{2}$/;
 
-function config() {
-  const apiKey = process.env.OPENAI_API_KEY;
+export interface LiveConfig {
+  apiKey: string;
+  chatModel: string;
+  embedModel: string;
+  embedRevision: string;
+}
+
+/** API-6/NFR-5: live calls never fall back to mutable model aliases. */
+export function readLiveConfig(
+  environment: NodeJS.ProcessEnv = process.env,
+): LiveConfig {
+  const apiKey = environment.OPENAI_API_KEY?.trim();
   if (!apiKey) {
     throw new LiveUnavailableError(
       "live evaluation isn't configured on this deployment",
     );
   }
+
+  const chatModel = environment.OPENAI_MODEL?.trim();
+  if (!chatModel || !IMMUTABLE_SNAPSHOT_SUFFIX.test(chatModel)) {
+    throw new LiveUnavailableError(
+      "live evaluation requires an immutable model snapshot",
+    );
+  }
+
+  const embedModel = environment.OPENAI_EMBED_MODEL?.trim();
+  const embedRevision = environment.OPENAI_EMBED_REVISION?.trim();
+  if (!embedModel || !embedRevision || /^(?:latest|current)$/i.test(embedRevision)) {
+    throw new LiveUnavailableError(
+      "live evaluation requires a pinned embedding model and deployment revision",
+    );
+  }
+
   return {
     apiKey,
-    chatModel: process.env.OPENAI_MODEL ?? "gpt-4.1-mini",
-    embedModel: process.env.OPENAI_EMBED_MODEL ?? "text-embedding-3-small",
+    chatModel,
+    embedModel,
+    embedRevision,
   };
 }
 
@@ -100,6 +133,87 @@ function decompositionPrompt(vocabularyNames: string[]): string {
   ].join("\n");
 }
 
+const CAPABILITY_NAME_SHAPE =
+  /^[a-z][a-z-]*s(?: [a-z][a-z0-9-]*)+$/;
+const NON_OBJECT_HEADS = new Set([
+  "as",
+  "at",
+  "between",
+  "by",
+  "for",
+  "from",
+  "in",
+  "into",
+  "of",
+  "on",
+  "over",
+  "through",
+  "to",
+  "under",
+  "with",
+  "without",
+]);
+const FORBIDDEN_CAPABILITY_WORDS = new Set([
+  "anker",
+  "breville",
+  "deluxe",
+  "dji",
+  "instant",
+  "ninja",
+  "premium",
+  "pro",
+  "smart",
+]);
+
+/** DM-3: enforce the naming law on the finalized live decomposition. */
+export function followsCapabilityNamingLaw(name: string): boolean {
+  if (!CAPABILITY_NAME_SHAPE.test(name) || /\d/.test(name)) return false;
+  const words = name.split(" ");
+  if (NON_OBJECT_HEADS.has(words[1])) return false;
+  return !words.some((word) => FORBIDDEN_CAPABILITY_WORDS.has(word));
+}
+
+/**
+ * Snapping may merge several raw capabilities. Validate the returned set after
+ * that merge so the API never emits a decomposition outside DM-3/DM-4.
+ */
+export function finalizeCanonicalCapabilities(
+  capabilities: Capability[],
+): Capability[] {
+  const deduped = new Map<string, Capability>();
+  capabilities.forEach((capability) => {
+    if (
+      !capability ||
+      typeof capability.name !== "string" ||
+      (capability.tier !== "primary" && capability.tier !== "secondary")
+    ) {
+      throw new Error("invalid capability shape");
+    }
+
+    const existing = deduped.get(capability.name);
+    if (
+      !existing ||
+      (existing.tier === "secondary" && capability.tier === "primary")
+    ) {
+      deduped.set(capability.name, capability);
+    }
+  });
+
+  const finalized = [...deduped.values()];
+  if (finalized.length < 3 || finalized.length > 8) {
+    throw new Error(
+      "canonical decomposition must contain 3-8 unique capabilities",
+    );
+  }
+  const invalid = finalized.find(
+    (capability) => !followsCapabilityNamingLaw(capability.name),
+  );
+  if (invalid) {
+    throw new Error(`capability violates the naming law: ${invalid.name}`);
+  }
+  return finalized;
+}
+
 function cosine(a: number[], b: number[]): number {
   let dot = 0;
   let normA = 0;
@@ -126,10 +240,10 @@ async function embed(
 }
 
 /**
- * ALG-2 pinning: vocabulary vectors are embedded lazily per process with the
- * same pinned model used for incoming strings, so cross-model comparison is
- * impossible by construction. Keyed by model in case env changes between
- * warm invocations.
+ * ALG-2 pinning: vocabulary vectors are embedded lazily per process. The cache
+ * is partitioned by both model id and the required deployment revision, so a
+ * deployment that changes embedding configuration cannot silently reuse the
+ * previous revision's vectors.
  */
 const vocabularyVectorsCache = new Map<
   string,
@@ -140,8 +254,13 @@ function vocabularyVectors(
   vocabularyNames: string[],
   apiKey: string,
   embedModel: string,
+  embedRevision: string,
 ) {
-  const cacheKey = `${embedModel}::${vocabularyNames.join("|")}`;
+  const cacheKey = JSON.stringify([
+    embedModel,
+    embedRevision,
+    vocabularyNames,
+  ]);
   let cached = vocabularyVectorsCache.get(cacheKey);
   if (!cached) {
     cached = embed(vocabularyNames, apiKey, embedModel).then((vectors) => ({
@@ -158,7 +277,7 @@ export async function decomposeLive(
   text: string,
   items: Item[],
 ): Promise<ProductDecomposition> {
-  const { apiKey, chatModel, embedModel } = config();
+  const { apiKey, chatModel, embedModel, embedRevision } = readLiveConfig();
   const vocabularyNames = [...deriveVocabulary(items).keys()];
 
   const completion = await openai(
@@ -204,7 +323,12 @@ export async function decomposeLive(
   // ALG-2 (3): embed and snap to the nearest entry at cosine ≥ 0.83.
   if (unmatched.length > 0) {
     const [vocab, unmatchedVectors] = await Promise.all([
-      vocabularyVectors(vocabularyNames, apiKey, embedModel),
+      vocabularyVectors(
+        vocabularyNames,
+        apiKey,
+        embedModel,
+        embedRevision,
+      ),
       embed(
         unmatched.map((capability) => capability.name),
         apiKey,
@@ -228,20 +352,12 @@ export async function decomposeLive(
     });
   }
 
-  // Snapping can collapse two capabilities onto one vocabulary entry; keep the
-  // strongest tier for each final name.
-  const deduped = new Map<string, { name: string; tier: Tier }>();
-  capabilities.forEach((capability) => {
-    const existing = deduped.get(capability.name);
-    if (!existing || (existing.tier === "secondary" && capability.tier === "primary")) {
-      deduped.set(capability.name, capability);
-    }
-  });
+  const finalizedCapabilities = finalizeCanonicalCapabilities(capabilities);
 
   return {
     name: raw.name,
     price: raw.price,
-    capabilities: [...deduped.values()],
+    capabilities: finalizedCapabilities,
     altSuggestion: raw.altSuggestion,
   };
 }

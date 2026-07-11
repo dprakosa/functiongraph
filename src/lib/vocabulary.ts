@@ -33,12 +33,24 @@ export function deriveVocabulary(items: Item[]): Map<string, VocabEntry> {
         };
         vocabulary.set(capability.name, entry);
       }
-      entry.degree += 1;
-      entry.owners.push({
-        itemId: item.id,
-        itemName: item.name,
-        tier: capability.tier,
-      });
+
+      // ALG-1 defines degree as the number of owning items, not the number of
+      // capability rows. Treat an item id as the owner identity and retain the
+      // stronger tier if malformed input repeats a capability on that item.
+      const existingOwner = entry.owners.find((owner) => owner.itemId === item.id);
+      if (!existingOwner) {
+        entry.owners.push({
+          itemId: item.id,
+          itemName: item.name,
+          tier: capability.tier,
+        });
+        entry.degree = entry.owners.length;
+      } else if (
+        existingOwner.tier === "secondary" &&
+        capability.tier === "primary"
+      ) {
+        existingOwner.tier = "primary";
+      }
     });
   });
   return vocabulary;

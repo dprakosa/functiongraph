@@ -3,6 +3,7 @@ import * as d3 from "d3";
 import type { GraphData, GraphEdgeDatum, GraphNodeDatum } from "../graph/buildGraph";
 import { GHOST_ID } from "../graph/buildGraph";
 import type { Phase } from "../state/appReducer";
+import { TIMINGS } from "../state/useBeats";
 
 interface ForceNode extends GraphNodeDatum, d3.SimulationNodeDatum {
   width: number;
@@ -25,6 +26,7 @@ export interface GraphCanvasProps {
   /** set when a view change was just announced (route toast) or user-initiated */
   viewKey: string;
   onNodeClick: (node: GraphNodeDatum) => void;
+  onZoomOut?: () => void;
 }
 
 const GHOST_PIN_PHASES: ReadonlySet<Phase> = new Set([
@@ -69,6 +71,10 @@ function nodeDimensions(node: GraphNodeDatum): {
 
 function endpointId(endpoint: string | ForceNode): string {
   return typeof endpoint === "string" ? endpoint : endpoint.id;
+}
+
+function isInteractiveNode(node: GraphNodeDatum): boolean {
+  return node.kind === "room" || node.kind === "room-unscanned" || node.kind === "item";
 }
 
 function buildNodeBody(
@@ -146,6 +152,14 @@ function buildNodeBody(
     if (node.kind === "item") {
       body
         .append("rect")
+        .attr("class", "gnode__hit")
+        .attr("x", -width / 2 - 5)
+        .attr("y", -22)
+        .attr("width", width + 10)
+        .attr("height", 44)
+        .attr("rx", 12);
+      body
+        .append("rect")
         .attr("class", "gnode__shape")
         .attr("x", -width / 2)
         .attr("y", -height / 2)
@@ -202,6 +216,7 @@ export function GraphCanvas({
   reducedMotion,
   viewKey,
   onNodeClick,
+  onZoomOut,
 }: GraphCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<d3.Selection<SVGSVGElement, unknown, null, undefined> | null>(null);
@@ -216,9 +231,36 @@ export function GraphCanvas({
   const signatureRef = useRef("");
   const sizeRef = useRef({ width: 900, height: 640 });
   const fitPendingRef = useRef(true);
+  const initialFitDoneRef = useRef(false);
   const viewKeyRef = useRef(viewKey);
   const onNodeClickRef = useRef(onNodeClick);
   onNodeClickRef.current = onNodeClick;
+  const onZoomOutRef = useRef(onZoomOut);
+  onZoomOutRef.current = onZoomOut;
+
+  function renderSimulationFrame() {
+    nodesRef.current.forEach((node) => {
+      positionsRef.current.set(node.id, { x: node.x ?? 0, y: node.y ?? 0 });
+    });
+    nodeSelRef.current?.attr(
+      "transform",
+      (node) => `translate(${node.x ?? 0},${node.y ?? 0})`,
+    );
+    const line = (edge: ForceEdge) => {
+      const source =
+        typeof edge.source === "string"
+          ? positionsRef.current.get(edge.source)
+          : { x: edge.source.x ?? 0, y: edge.source.y ?? 0 };
+      const target =
+        typeof edge.target === "string"
+          ? positionsRef.current.get(edge.target)
+          : { x: edge.target.x ?? 0, y: edge.target.y ?? 0 };
+      if (!source || !target) return "";
+      return `M${source.x},${source.y}L${target.x},${target.y}`;
+    };
+    edgeSelRef.current?.attr("d", line);
+    scanSelRef.current?.attr("d", line);
+  }
 
   const signature = useMemo(
     () =>
@@ -244,7 +286,7 @@ export function GraphCanvas({
       .attr("width", "100%")
       .attr("height", "100%")
       .attr("viewBox", `0 0 ${width} ${height}`)
-      .attr("role", "img")
+      .attr("role", "group")
       .attr("aria-label", "FunctionGraph capability graph");
     svg
       .append("desc")
@@ -263,6 +305,13 @@ export function GraphCanvas({
       .filter((event) => event.type !== "dblclick")
       .on("zoom", (event) => {
         viewport.attr("transform", event.transform.toString());
+        if (
+          event.sourceEvent &&
+          viewKeyRef.current.startsWith("room:") &&
+          event.transform.k <= 0.31
+        ) {
+          onZoomOutRef.current?.();
+        }
       });
     svg.call(zoom).on("dblclick.zoom", null);
 
@@ -311,34 +360,16 @@ export function GraphCanvas({
       .alphaDecay(0.07)
       .velocityDecay(0.45);
 
-    simulation.on("tick", () => {
-      nodesRef.current.forEach((node) => {
-        positionsRef.current.set(node.id, { x: node.x ?? 0, y: node.y ?? 0 });
-      });
-      nodeSelRef.current?.attr(
-        "transform",
-        (node) => `translate(${node.x ?? 0},${node.y ?? 0})`,
-      );
-      const line = (edge: ForceEdge) => {
-        const source =
-          typeof edge.source === "string"
-            ? positionsRef.current.get(edge.source)
-            : { x: edge.source.x ?? 0, y: edge.source.y ?? 0 };
-        const target =
-          typeof edge.target === "string"
-            ? positionsRef.current.get(edge.target)
-            : { x: edge.target.x ?? 0, y: edge.target.y ?? 0 };
-        if (!source || !target) return "";
-        return `M${source.x},${source.y}L${target.x},${target.y}`;
-      };
-      edgeSelRef.current?.attr("d", line);
-      scanSelRef.current?.attr("d", line);
-    });
+    simulation.on("tick", renderSimulationFrame);
 
     simulation.on("end", () => {
       if (fitPendingRef.current) {
         fitPendingRef.current = false;
-        fitView(500);
+        // Initial framing must not look like unannounced navigation (VIS-6).
+        // Later view changes follow a user action or the route toast and use
+        // the normative camera duration.
+        fitView(initialFitDoneRef.current ? TIMINGS.cameraMs : 0);
+        initialFitDoneRef.current = true;
       }
     });
 
@@ -364,7 +395,7 @@ export function GraphCanvas({
       simulation.force("y", d3.forceY<ForceNode>(nextHeight / 2).strength(0.06));
       // Resize is caused by the verdict panel sliding in or a window change —
       // both announced/user-initiated; refit so graph and panel share space.
-      fitView(300);
+      fitView(TIMINGS.cameraMs);
     });
     resizeObserver.observe(container);
 
@@ -460,8 +491,6 @@ export function GraphCanvas({
         (enter) => {
           const group = enter
             .append("g")
-            .attr("role", "button")
-            .attr("tabindex", 0)
             .style("opacity", 0);
           buildNodeBody(group);
           group
@@ -483,6 +512,8 @@ export function GraphCanvas({
         (node) =>
           `gnode gnode--${node.kind}${node.hot ? " is-hot" : ""}`,
       )
+      .attr("role", (node) => (isInteractiveNode(node) ? "button" : null))
+      .attr("tabindex", (node) => (isInteractiveNode(node) ? 0 : null))
       .attr("data-node-id", (node) => node.id)
       .attr("aria-label", (node) =>
         `${node.label}${node.sub ? `, ${node.sub}` : ""}, ${node.kind.replaceAll("-", " ")}`,
@@ -492,11 +523,12 @@ export function GraphCanvas({
         (node) => `translate(${node.x ?? 0},${node.y ?? 0})`,
       )
       .on("click", (event: MouseEvent, node) => {
+        if (!isInteractiveNode(node)) return;
         event.stopPropagation();
         onNodeClickRef.current(node);
       })
       .on("keydown", (event: KeyboardEvent, node) => {
-        if (event.key === "Enter" || event.key === " ") {
+        if (isInteractiveNode(node) && (event.key === "Enter" || event.key === " ")) {
           event.preventDefault();
           onNodeClickRef.current(node);
         }
@@ -504,6 +536,9 @@ export function GraphCanvas({
 
     const drag = d3
       .drag<SVGGElement, ForceNode>()
+      .filter((_event, node) =>
+        !(node.kind === "ghost" && GHOST_PIN_PHASES.has(phase)),
+      )
       .on("start", (event, node) => {
         event.sourceEvent?.stopPropagation();
         // Ambient: drag reheats locally then cools (INT ambient rule).
@@ -533,7 +568,7 @@ export function GraphCanvas({
       .attr(
         "class",
         (edge) =>
-          `gedge gedge--${edge.kind}${edge.tier ? ` gedge--${edge.tier}` : ""}`,
+          `gedge gedge--${edge.kind}${edge.mini ? " gedge--mini" : ""}${edge.tier ? ` gedge--${edge.tier}` : ""}`,
       )
       .attr("data-edge-id", (edge) => edge.id);
 
@@ -560,17 +595,14 @@ export function GraphCanvas({
       for (let i = 0; i < 220 && simulation.alpha() > simulation.alphaMin(); i += 1) {
         simulation.tick();
       }
-      nodesRef.current.forEach((node) =>
-        positionsRef.current.set(node.id, { x: node.x ?? 0, y: node.y ?? 0 }),
-      );
-      nodeSelection.attr(
-        "transform",
-        (node) => `translate(${node.x ?? 0},${node.y ?? 0})`,
-      );
-      simulation.dispatch("tick");
+      // d3.simulation.tick() intentionally does not dispatch tick events;
+      // render the settled frame explicitly after synchronous reduced-motion
+      // ticks instead of reaching for a non-public dispatch API.
+      renderSimulationFrame();
       if (fitPendingRef.current) {
         fitPendingRef.current = false;
         fitView(0);
+        initialFitDoneRef.current = true;
       }
     } else {
       // Seeded from current positions, nodes glide rather than teleport.
@@ -625,6 +657,21 @@ export function GraphCanvas({
           edge.id === `ghost->${pulsingSlug}`,
       );
   }, [routingActive, routeDomain, pulsingSlug, reducedMotion, signature]);
+
+  // A preference change can arrive while the simulation or an eased camera
+  // transition is in flight. Stop both immediately; the App reducer moves the
+  // active evaluation straight to its fully revealed verdict (SM-9).
+  useEffect(() => {
+    if (!reducedMotion) return;
+    simRef.current?.stop();
+    svgRef.current?.interrupt();
+    viewportRef.current?.interrupt();
+    nodeSelRef.current?.interrupt();
+    edgeSelRef.current?.interrupt();
+    scanSelRef.current?.interrupt();
+    fitView(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reducedMotion]);
 
   return <div ref={containerRef} className="graph-canvas" data-testid="graph-canvas" />;
 }

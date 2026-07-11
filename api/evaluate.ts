@@ -12,11 +12,21 @@ export default async function evaluate(
       .json({ error: "that method isn't supported", hint: 'POST JSON like { "text": "convection oven" }' });
     return;
   }
-  const forwarded = request.headers["x-forwarded-for"];
-  const clientIp =
-    (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(",")[0].trim() ??
-    request.socket.remoteAddress ??
-    "unknown";
-  const { status, body } = await handleEvaluate(request.body, clientIp);
-  response.status(status).json(body);
+
+  try {
+    const forwarded = request.headers["x-forwarded-for"];
+    const clientIp =
+      (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(",")[0].trim() ??
+      request.socket.remoteAddress ??
+      "unknown";
+    const { status, body } = await handleEvaluate(request.body, clientIp);
+    response.status(status).json(body);
+  } catch {
+    // API-5 applies to unexpected production failures too: always return a
+    // next step rather than letting the serverless runtime emit an opaque 500.
+    response.status(500).json({
+      error: "evaluation failed unexpectedly",
+      hint: "tap an example — those never touch the network",
+    });
+  }
 }

@@ -87,7 +87,7 @@ describe("demo cache (API-3, NFR-1)", () => {
       "roasts large meals",
       "captures aerial photos",
       "records aerial video",
-      "hovers in place",
+      "maintains aerial position",
       "flies preset routes",
     ]);
     Object.values(demoCache.entries).forEach((entry) => {

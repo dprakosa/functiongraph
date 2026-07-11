@@ -34,7 +34,7 @@
       "capabilities": [
         { "name": "captures aerial photos", "tier": "primary" },
         { "name": "records aerial video", "tier": "primary" },
-        { "name": "hovers in place", "tier": "secondary" },
+        { "name": "maintains aerial position", "tier": "secondary" },
         { "name": "flies preset routes", "tier": "secondary" }
       ],
       "altSuggestion": null

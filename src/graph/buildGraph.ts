@@ -23,7 +23,12 @@ export type NodeKind =
   | "mini";
 
 /** VIS-4 edge taxonomy (pulse is a cosmetic class, not a kind; SM-8). */
-export type EdgeKind = "inventory" | "scan" | "covered" | "new" | "mini";
+export type EdgeKind =
+  | "inventory"
+  | "scan"
+  | "covered"
+  | "new"
+  | "cross-room";
 
 export interface GraphNodeDatum {
   id: string;
@@ -44,6 +49,8 @@ export interface GraphEdgeDatum {
   target: string;
   kind: EdgeKind;
   tier?: Tier;
+  /** Unique-capability inventory edge, rendered dashed beside its expanded item. */
+  mini?: boolean;
   /** physics, precomputed from data (ALG-3: specificity keeps domains apart) */
   distance: number;
   strength: number;
@@ -102,7 +109,7 @@ export function buildGraph({
 }: BuildArgs): GraphData {
   const vocabulary = deriveVocabulary(items);
   const hubs = deriveHubs(items);
-  const hubSlugs = new Set(hubs.map((hub) => hub.slug));
+  const hubBySlug = new Map(hubs.map((hub) => [hub.slug, hub]));
   const domains = deriveDomains(items);
   const domainByItemId = new Map<string, string>();
   domains.forEach((domain) =>
@@ -248,7 +255,8 @@ export function buildGraph({
         id: inventoryEdgeId(expandedItem.id, slug),
         source: expandedItem.id,
         target: miniId(slug),
-        kind: "mini",
+        kind: "inventory",
+        mini: true,
         tier: capability.tier,
         distance: 44,
         strength: 0.8,
@@ -266,27 +274,60 @@ export function buildGraph({
     result.verdict.rows.forEach((row) => {
       if (row.covered) {
         let targetId: string;
-        if (hubSlugs.has(row.capSlug)) {
+        const promotedHub = hubBySlug.get(row.capSlug);
+        if (promotedHub) {
           targetId = hubId(row.capSlug);
+          // Multi-room results may cite a coverer outside the routed room.
+          // Keep the globally promoted hub visible so its ghost edge has a
+          // real endpoint; never promote a capability that ALG-8 excluded.
+          if (!nodes.some((node) => node.id === targetId)) {
+            const localOwner = promotedHub.owners.find((owner) =>
+              roomItemIds.has(owner.itemId),
+            );
+            nodes.push({
+              id: targetId,
+              kind: "hub",
+              label: promotedHub.name,
+              hot: promotedHub.hot,
+              seedNear: localOwner?.itemId ?? GHOST_ID,
+              domain: localOwner
+                ? roomLabel
+                : domainByItemId.get(promotedHub.owners[0]?.itemId),
+            });
+          }
         } else {
-          // A covered capability below hub promotion (degree 1): materialize
-          // its mini next to its owner so the row still maps to a visible
-          // edge (PR-3b) — mirrors the click-bloom, but caused by the ghost.
+          // A covered capability below hub promotion materializes only as
+          // contextual mini evidence. This preserves ALG-8's top-12 cap while
+          // keeping the verdict row's ghost edge inspectable (PR-3b).
           const owner = vocabulary.get(row.capability)?.owners[0];
-          if (!owner || !roomItemIds.has(owner.itemId)) return;
           targetId = miniId(row.capSlug);
           if (!nodes.some((node) => node.id === targetId)) {
             nodes.push({
               id: targetId,
               kind: "mini",
               label: row.capability,
-              seedNear: owner.itemId,
+              seedNear:
+                owner && roomItemIds.has(owner.itemId)
+                  ? owner.itemId
+                  : GHOST_ID,
+              domain: owner
+                ? domainByItemId.get(owner.itemId)
+                : undefined,
             });
+          }
+          if (
+            owner &&
+            roomItemIds.has(owner.itemId) &&
+            !edges.some(
+              (edge) => edge.id === inventoryEdgeId(owner.itemId, row.capSlug),
+            )
+          ) {
             edges.push({
               id: inventoryEdgeId(owner.itemId, row.capSlug),
               source: owner.itemId,
               target: targetId,
-              kind: "mini",
+              kind: "inventory",
+              mini: true,
               tier: owner.tier,
               distance: 44,
               strength: 0.8,

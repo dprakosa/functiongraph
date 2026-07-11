@@ -1,8 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { handleEvaluate } from "./handler";
 import type { EvaluateError, EvaluateResult } from "../../src/lib/types";
 
 describe("POST /api/evaluate handler", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("resolves demo-cache entries instantly with cached: true (API-2, NFR-1)", async () => {
     const { status, body } = await handleEvaluate(
       { text: "Convection countertop oven — $129" },
@@ -42,7 +46,8 @@ describe("POST /api/evaluate handler", () => {
   });
 
   it("points unconfigured live path at the examples (API-5)", async () => {
-    // No OPENAI_API_KEY in the test environment.
+    // Keep this deterministic even if the surrounding shell/CI has a live key.
+    vi.stubEnv("OPENAI_API_KEY", "");
     const { status, body } = await handleEvaluate(
       { text: "an unusual product nobody cached" },
       "test-ip",

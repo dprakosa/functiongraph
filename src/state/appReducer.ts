@@ -52,6 +52,7 @@ export type AppAction =
   | { type: "ROUTE_SHOWN" }
   | { type: "DIVE_STARTED" }
   | { type: "VERDICT_SHOWN" }
+  | { type: "REDUCED_MOTION_ENABLED" }
   | { type: "ROW_PULSED"; capSlug: string }
   | { type: "PULSE_ENDED" }
   | { type: "ITEM_TOGGLED"; itemId: string }
@@ -167,6 +168,21 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case "VERDICT_SHOWN":
       return state.phase === "routing" || state.phase === "settling"
         ? { ...state, phase: "verdict" }
+        : state;
+
+    case "REDUCED_MOTION_ENABLED":
+      // SM-9 also applies when the preference changes during an active beat:
+      // reveal the already-fetched result immediately instead of leaving a
+      // timer-driven phase paused indefinitely.
+      return state.result && state.phase !== "resting" && state.phase !== "verdict"
+        ? {
+            ...state,
+            phase: "verdict",
+            revealedChips: state.result.capabilities.length,
+            view: state.route?.domain
+              ? { level: "room", domain: state.route.domain }
+              : { level: "home" },
+          }
         : state;
 
     case "ROW_PULSED":
