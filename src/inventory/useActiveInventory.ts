@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import inventoryFile from "../data/inventory.json";
 import type { ViewerMode } from "../auth/AuthShell";
-import type { InventoryFile, Item } from "../lib/types";
+import type { InventoryFile, Item, OwnedInventoryItem } from "../lib/types";
 
 const guestInventory = inventoryFile as InventoryFile;
 const ACTIVE_DOMAINS = new Set(["kitchen", "electronics", "garage", "bathroom"]);
@@ -10,19 +10,26 @@ export type ActiveInventoryState =
   | { status: "guest"; items: Item[]; retry: () => void }
   | { status: "loading"; items: null; retry: () => void }
   | { status: "error"; items: null; error: string; hint: string; retry: () => void }
-  | { status: "empty"; items: Item[]; retry: () => void }
-  | { status: "populated"; items: Item[]; retry: () => void };
+  | { status: "empty"; items: OwnedInventoryItem[]; retry: () => void }
+  | { status: "populated"; items: OwnedInventoryItem[]; retry: () => void };
 
 type PersonalInventoryState = Exclude<ActiveInventoryState, { status: "guest" }>;
 
-function isItem(value: unknown): value is Item {
+function isOwnedInventoryItem(value: unknown): value is OwnedInventoryItem {
   if (!value || typeof value !== "object") return false;
-  const item = value as Partial<Item>;
+  const item = value as Partial<OwnedInventoryItem>;
   return (
     typeof item.id === "string" &&
     typeof item.name === "string" &&
     typeof item.domain === "string" &&
     ACTIVE_DOMAINS.has(item.domain) &&
+    (item.quantity === null ||
+      (Number.isSafeInteger(item.quantity) && Number(item.quantity) > 0)) &&
+    item.source === "photo" &&
+    typeof item.createdAt === "string" &&
+    !Number.isNaN(Date.parse(item.createdAt)) &&
+    typeof item.updatedAt === "string" &&
+    !Number.isNaN(Date.parse(item.updatedAt)) &&
     Array.isArray(item.capabilities) &&
     item.capabilities.every(
       (capability) =>
@@ -81,7 +88,7 @@ export function useActiveInventory(viewerMode: ViewerMode): ActiveInventoryState
         }
 
         const items = (payload as { items?: unknown } | undefined)?.items;
-        if (!Array.isArray(items) || !items.every(isItem)) {
+        if (!Array.isArray(items) || !items.every(isOwnedInventoryItem)) {
           throw new Error("inventory response was not valid");
         }
 

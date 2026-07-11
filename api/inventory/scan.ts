@@ -1,5 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { authenticateApiRequest } from "../_lib/auth.js";
+import {
+  InventoryStoreUnavailableError,
+  listInventoryItems,
+} from "../_lib/inventoryStore.js";
 import { handleInventoryScan } from "../_lib/scanInventory.js";
 
 /** API-7: authenticated, ephemeral photo-to-inventory draft. */
@@ -22,12 +26,21 @@ export default async function scanInventory(
       response.status(authentication.status).json(authentication.body);
       return;
     }
+    const items = await listInventoryItems(authentication.userId);
     const { status, body } = await handleInventoryScan(
       request.body,
       authentication.userId,
+      items,
     );
     response.status(status).json(body);
-  } catch {
+  } catch (error) {
+    if (error instanceof InventoryStoreUnavailableError) {
+      response.status(503).json({
+        error: "personal inventory is temporarily unavailable",
+        hint: "wait a moment and try the photo scan again",
+      });
+      return;
+    }
     response.status(500).json({
       error: "photo scanning failed unexpectedly",
       hint: "try again with a clear JPEG, PNG, or WebP photo",

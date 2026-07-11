@@ -1,6 +1,10 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vitest/config";
 import { handleEvaluate } from "./api/_lib/handler";
+import inventoryFile from "./src/data/inventory.json";
+import type { InventoryFile } from "./src/lib/types";
+
+const guestInventory = inventoryFile as InventoryFile;
 
 /**
  * Serves the same handler the Vercel function wraps, so `npm run dev` has a
@@ -35,7 +39,11 @@ function evaluateDevApi(): Plugin {
           } catch {
             body = undefined;
           }
-          handleEvaluate(body, request.socket.remoteAddress ?? "local").then(
+          handleEvaluate(
+            body,
+            request.socket.remoteAddress ?? "local",
+            guestInventory.items,
+          ).then(
             (result) => respond(result.status, result.body),
             () =>
               respond(500, {

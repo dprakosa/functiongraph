@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "test:db": "node scripts/neon-test-db.mjs",
     "preview": "vite preview",
     "pinecone:setup": "node --env-file=.env scripts/pinecone-setup.mjs",
     "test": "vitest run",
@@ -15,7 +18,9 @@
     "@atlaskit/tokens": "^15.5.0",
     "@clerk/backend": "^3.11.4",
     "@clerk/react": "^6.12.2",
+    "@neondatabase/serverless": "^1.1.0",
     "d3": "^7.9.0",
+    "drizzle-orm": "^0.45.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "sharp": "^0.35.3"
@@ -30,6 +35,7 @@
     "@types/react-dom": "^19.2.3",
     "@vercel/node": "^5.8.23",
     "@vitejs/plugin-react": "^6.0.3",
+    "drizzle-kit": "^0.31.10",
     "jsdom": "^29.1.1",
     "typescript": "5.9.3",
     "vite": "^8.1.4",

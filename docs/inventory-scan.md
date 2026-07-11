@@ -2,7 +2,7 @@
 
 `POST /api/inventory/scan` turns one household photo into an ephemeral draft
 inventory. The endpoint is backend-only: it does not provide a camera UI,
-confirm candidates, update `inventory.json`, or use a database/vector store.
+confirm candidates, update the bundled `inventory.json`, or persist scan data.
 Candidates can be assigned to any of the four active rooms—Kitchen,
 Electronics, Garage, or Bathroom—or left unclassified.
 
@@ -57,7 +57,8 @@ and 503 for configuration or provider failures.
 The backend validates image content, applies EXIF rotation, strips metadata,
 flattens transparency, resizes within 2048×2048, and encodes a quality-82 JPEG.
 It makes one structured vision request with high image detail and then reuses
-the current inventory vocabulary. Exact capability strings are reused first;
+the authenticated user's Neon inventory vocabulary. Exact capability strings
+are reused first;
 all unmatched strings across all candidates share one embeddings batch and
 snap at cosine similarity 0.83.
 
@@ -67,9 +68,15 @@ Clerk user id is sent only as a SHA-256 safety identifier. The in-memory limit
 is three provider calls per Clerk user per minute; it is best-effort per
 serverless instance.
 
+The successful response remains an ephemeral review draft. A later explicit
+`POST /api/inventory/items` request may persist only selected `name`, `domain`,
+`quantity`, and canonical `capabilities`; candidate ids, evidence, confidence,
+warnings, and image data are rejected by that API.
+
 ## Deployment
 
-Configure the Clerk and OpenAI variables shown in [`.env.example`](../.env.example).
+Configure the Clerk, Neon, and OpenAI variables shown in
+[`.env.example`](../.env.example).
 `OPENAI_VISION_MODEL` must be a dated model snapshot; if it is omitted, the
 endpoint uses the pinned `OPENAI_MODEL`. The scan also requires the configured
 embedding model/revision for capability canonicalization.

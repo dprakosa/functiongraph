@@ -1,18 +1,18 @@
+import { createHash } from "node:crypto";
 import demoCacheFile from "../../src/data/demoCache.json" with { type: "json" };
-import inventoryFile from "../../src/data/inventory.json" with { type: "json" };
 import { norm } from "../../src/lib/text.js";
 import { scoreProduct } from "../../src/lib/scoring.js";
+import { deriveVocabulary } from "../../src/lib/vocabulary.js";
 import type {
   DemoCacheFile,
   EvaluateError,
   EvaluateResult,
-  InventoryFile,
+  Item,
   ProductDecomposition,
 } from "../../src/lib/types.js";
 import { decomposeLive, LiveUnavailableError } from "./live.js";
 
 const demoCache = demoCacheFile as unknown as DemoCacheFile;
-const inventory = inventoryFile as InventoryFile;
 
 export interface HandlerResponse {
   status: number;
@@ -21,6 +21,10 @@ export interface HandlerResponse {
 
 /** API-2 warm in-memory memo: decompositions only, verdicts always live (ALG-10). */
 const memo = new Map<string, ProductDecomposition>();
+
+export function resetEvaluateMemoForTests(): void {
+  memo.clear();
+}
 
 /** API-6: minimal per-IP rate limit guarding the live path only. */
 const LIVE_CALLS_PER_MINUTE = 10;
@@ -38,12 +42,21 @@ function liveRateLimited(clientIp: string, now: number): boolean {
 
 const HINT_TAP_EXAMPLE = "tap an example — those never touch the network";
 
-function ok(decomposition: ProductDecomposition, cached: boolean): HandlerResponse {
+function inventoryFingerprint(items: Item[]): string {
+  const vocabulary = [...deriveVocabulary(items).keys()].sort().join("\n");
+  return createHash("sha256").update(vocabulary).digest("base64url");
+}
+
+function ok(
+  decomposition: ProductDecomposition,
+  cached: boolean,
+  items: Item[],
+): HandlerResponse {
   return {
     status: 200,
     body: {
       ...decomposition,
-      verdict: scoreProduct(decomposition, inventory.items),
+      verdict: scoreProduct(decomposition, items),
       cached,
     },
   };
@@ -52,6 +65,7 @@ function ok(decomposition: ProductDecomposition, cached: boolean): HandlerRespon
 export async function handleEvaluate(
   rawBody: unknown,
   clientIp: string,
+  items: Item[],
 ): Promise<HandlerResponse> {
   const text =
     rawBody && typeof rawBody === "object" && "text" in rawBody
@@ -77,8 +91,8 @@ export async function handleEvaluate(
     };
   }
 
-  const key = norm(text);
-  if (!key) {
+  const normalizedText = norm(text);
+  if (!normalizedText) {
     return {
       status: 400,
       body: {
@@ -89,12 +103,16 @@ export async function handleEvaluate(
   }
 
   // API-2 (1): bundled demo cache — instant, offline-proof.
-  const cachedEntry = demoCache.entries[key];
-  if (cachedEntry) return ok(cachedEntry, true);
+  const cachedEntry = demoCache.entries[normalizedText];
+  if (cachedEntry) return ok(cachedEntry, true, items);
 
   // API-2 (2): warm in-memory memo.
-  const memoEntry = memo.get(key);
-  if (memoEntry) return ok(memoEntry, true);
+  // The decomposition depends on the canonical capability vocabulary, so the
+  // memo key includes only a one-way vocabulary fingerprint. Verdicts and
+  // owner identifiers are never cached.
+  const memoKey = `${normalizedText}:${inventoryFingerprint(items)}`;
+  const memoEntry = memo.get(memoKey);
+  if (memoEntry) return ok(memoEntry, true, items);
 
   // API-2 (3): live decomposition → canonicalization → scoring.
   if (liveRateLimited(clientIp, Date.now())) {
@@ -108,9 +126,9 @@ export async function handleEvaluate(
   }
 
   try {
-    const decomposition = await decomposeLive(text, inventory.items);
-    memo.set(key, decomposition);
-    return ok(decomposition, false);
+    const decomposition = await decomposeLive(text, items);
+    memo.set(memoKey, decomposition);
+    return ok(decomposition, false, items);
   } catch (error) {
     if (error instanceof LiveUnavailableError) {
       return {

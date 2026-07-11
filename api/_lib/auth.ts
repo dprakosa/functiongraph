@@ -12,32 +12,64 @@ type AuthConfig = {
   authorizedParties: string[];
 };
 
-const UNAUTHENTICATED: AuthOutcome = {
-  ok: false,
-  status: 401,
-  body: {
-    error: "sign in to evaluate a live product",
-    hint: "sign in and try again, or tap an example — those never touch the network",
+type AuthFeature = "evaluation" | "photo" | "inventory";
+type AuthFailure = "unauthenticated" | "not-configured" | "unavailable";
+
+const AUTH_FAILURES: Record<
+  AuthFeature,
+  Record<AuthFailure, { error: string; hint: string }>
+> = {
+  evaluation: {
+    unauthenticated: {
+      error: "sign in to evaluate a live product",
+      hint: "sign in and try again, or tap an example — those never touch the network",
+    },
+    "not-configured": {
+      error: "live evaluation authentication isn't configured",
+      hint: "configure Clerk on the server, or tap an example — those never touch the network",
+    },
+    unavailable: {
+      error: "sign-in verification is temporarily unavailable",
+      hint: "try again in a moment, or tap an example — those never touch the network",
+    },
+  },
+  photo: {
+    unauthenticated: {
+      error: "sign in to scan an inventory photo",
+      hint: "sign in and try the photo again",
+    },
+    "not-configured": {
+      error: "photo scanning authentication isn't configured",
+      hint: "configure Clerk on the server before scanning a photo",
+    },
+    unavailable: {
+      error: "sign-in verification is temporarily unavailable",
+      hint: "wait a moment and try the photo again",
+    },
+  },
+  inventory: {
+    unauthenticated: {
+      error: "sign in to access your personal inventory",
+      hint: "sign in and load your confirmed items again",
+    },
+    "not-configured": {
+      error: "personal inventory authentication isn't configured",
+      hint: "configure Clerk on the server before loading personal inventory",
+    },
+    unavailable: {
+      error: "sign-in verification is temporarily unavailable",
+      hint: "wait a moment and try loading your inventory again",
+    },
   },
 };
 
-const AUTH_NOT_CONFIGURED: AuthOutcome = {
-  ok: false,
-  status: 503,
-  body: {
-    error: "live evaluation authentication isn't configured",
-    hint: "configure Clerk on the server, or tap an example — those never touch the network",
-  },
-};
-
-const AUTH_UNAVAILABLE: AuthOutcome = {
-  ok: false,
-  status: 503,
-  body: {
-    error: "sign-in verification is temporarily unavailable",
-    hint: "try again in a moment, or tap an example — those never touch the network",
-  },
-};
+function authFailure(feature: AuthFeature, failure: AuthFailure): AuthOutcome {
+  return {
+    ok: false,
+    status: failure === "unauthenticated" ? 401 : 503,
+    body: AUTH_FAILURES[feature][failure],
+  };
+}
 
 // authenticateRequest reports these verifier/configuration failures as a
 // signed-out state. They are service failures, not bad credentials from a user.
@@ -234,18 +266,19 @@ function toWebRequest(request: VercelRequest): Request {
 /** Authenticate a server-side live feature and return its stable Clerk user id. */
 export async function authenticateApiRequest(
   request: VercelRequest,
+  feature: AuthFeature = "photo",
 ): Promise<AuthOutcome> {
   const config = loadAuthConfig();
-  if (!config) return AUTH_NOT_CONFIGURED;
+  if (!config) return authFailure(feature, "not-configured");
 
   let webRequest: Request;
   try {
     webRequest = toWebRequest(request);
   } catch {
-    return AUTH_UNAVAILABLE;
+    return authFailure(feature, "unavailable");
   }
   if (hasOnlyMalformedSessionTokens(webRequest.headers)) {
-    return UNAUTHENTICATED;
+    return authFailure(feature, "unauthenticated");
   }
 
   try {
@@ -262,18 +295,23 @@ export async function authenticateApiRequest(
       const auth = state.toAuth({ treatPendingAsSignedOut: true });
       return auth.isAuthenticated && auth.userId
         ? { ok: true, userId: auth.userId }
-        : UNAUTHENTICATED;
+        : authFailure(feature, "unauthenticated");
     }
     if (state.reason && VERIFIER_FAILURE_REASONS.has(state.reason)) {
-      return AUTH_UNAVAILABLE;
+      return authFailure(feature, "unavailable");
     }
-    return UNAUTHENTICATED;
+    return authFailure(feature, "unauthenticated");
   } catch {
     // Clerk configuration/JWKS errors can contain key material and request
     // details, so expose only a stable, actionable PDD-shaped response.
-    return AUTH_UNAVAILABLE;
+    return authFailure(feature, "unavailable");
   }
 }
 
-/** Backwards-compatible name for the existing evaluate wrapper. */
-export const authenticateEvaluateRequest = authenticateApiRequest;
+export function authenticateEvaluateRequest(request: VercelRequest) {
+  return authenticateApiRequest(request, "evaluation");
+}
+
+export function authenticateInventoryRequest(request: VercelRequest) {
+  return authenticateApiRequest(request, "inventory");
+}
