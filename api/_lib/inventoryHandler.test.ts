@@ -130,4 +130,36 @@ describe("personal inventory handlers", () => {
     expect(response.body).toMatchObject({ error: expect.any(String), hint: expect.any(String) });
     expect(JSON.stringify(response)).not.toContain("private database detail");
   });
+
+  it("sanitizes item mutation failures without exposing database details", async () => {
+    const storeError = new InventoryStoreUnavailableError();
+    storeError.message = "private update detail";
+    vi.mocked(updateInventoryItem).mockRejectedValue(storeError);
+
+    const unavailable = await handleInventoryItem(
+      "PATCH",
+      id,
+      { quantity: 2 },
+      "user_a",
+    );
+
+    expect(unavailable.status).toBe(503);
+    expect(unavailable.body).toMatchObject({
+      error: expect.any(String),
+      hint: expect.any(String),
+    });
+    expect(JSON.stringify(unavailable)).not.toContain("private update detail");
+
+    vi.mocked(deleteInventoryItem).mockRejectedValue(
+      new Error("private delete detail"),
+    );
+    const unexpected = await handleInventoryItem(
+      "DELETE",
+      id,
+      undefined,
+      "user_a",
+    );
+    expect(unexpected.status).toBe(500);
+    expect(JSON.stringify(unexpected)).not.toContain("private delete detail");
+  });
 });

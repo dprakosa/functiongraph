@@ -167,6 +167,43 @@ describe("personal inventory API wrappers", () => {
     expect(outgoing.json).not.toHaveBeenCalled();
   });
 
+  it("forwards an authenticated patch and returns only the confirmed item", async () => {
+    const id = "f65cf02e-134f-4bb7-bec8-1c43767315c3";
+    const body = { name: "Countertop toaster", quantity: null };
+    const item = {
+      id,
+      name: "Countertop toaster",
+      domain: "kitchen",
+      quantity: null,
+      capabilities: [{ name: "toasts bread", tier: "primary" }],
+      source: "photo",
+      createdAt: "2026-07-12T00:00:00.000Z",
+      updatedAt: "2026-07-12T00:01:00.000Z",
+    };
+    vi.mocked(handleInventoryItem).mockResolvedValue({
+      status: 200,
+      body: { item },
+    });
+    const incoming = request({ method: "PATCH", query: { id }, body });
+    const outgoing = responseMock();
+
+    await inventoryItem(incoming, outgoing.response);
+
+    expect(outgoing.setHeader).toHaveBeenCalledWith(
+      "Cache-Control",
+      "private, no-store",
+    );
+    expect(authenticateInventoryRequest).toHaveBeenCalledWith(incoming);
+    expect(handleInventoryItem).toHaveBeenCalledWith(
+      "PATCH",
+      id,
+      body,
+      "user_test",
+    );
+    expect(outgoing.status).toHaveBeenCalledWith(200);
+    expect(outgoing.json).toHaveBeenCalledWith({ item });
+  });
+
   it("rejects unsupported item methods before authentication", async () => {
     const outgoing = responseMock();
 

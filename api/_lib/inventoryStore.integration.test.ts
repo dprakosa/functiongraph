@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { ConfirmedInventoryItemInput } from "../../src/lib/types";
+import type {
+  ConfirmedInventoryItemInput,
+  EvaluateResult,
+} from "../../src/lib/types";
+import { handleEvaluate } from "./handler";
 import {
   createInventoryItems,
   deleteInventoryForUser,
@@ -15,6 +19,7 @@ const integration = describe.skipIf(!testDatabaseUrl);
 const userA = `test_a_${randomUUID()}`;
 const userB = `test_b_${randomUUID()}`;
 const atomicUser = `test_atomic_${randomUUID()}`;
+const mutationUser = `test_mutation_${randomUUID()}`;
 const toaster: ConfirmedInventoryItemInput = {
   name: "Toaster",
   domain: "kitchen",
@@ -38,6 +43,7 @@ integration("Neon inventory isolation", () => {
       deleteInventoryForUser(userA),
       deleteInventoryForUser(userB),
       deleteInventoryForUser(atomicUser),
+      deleteInventoryForUser(mutationUser),
     ]);
   });
 
@@ -69,5 +75,66 @@ integration("Neon inventory isolation", () => {
       ]),
     ).rejects.toBeInstanceOf(InventoryStoreUnavailableError);
     await expect(listInventoryItems(atomicUser)).resolves.toEqual([]);
+  });
+
+  it("persists edits and deletion across reloads and subsequent scoring", async () => {
+    const [created] = await createInventoryItems(mutationUser, [toaster]);
+    const beforeEdit = await listInventoryItems(mutationUser);
+    const beforeScore = await handleEvaluate(
+      { text: "Convection countertop oven — $129" },
+      "integration-before-edit",
+      beforeEdit,
+    );
+
+    expect((beforeScore.body as EvaluateResult).verdict.coveredCount).toBe(1);
+    expect(
+      (beforeScore.body as EvaluateResult).verdict.rows.find(
+        (row) => row.capability === "toasts bread",
+      )?.bestCoverer,
+    ).toBe("Toaster");
+
+    const updated = await updateInventoryItem(mutationUser, created.id, {
+      name: "Countertop toaster",
+      domain: "electronics",
+      quantity: null,
+    });
+    const afterEdit = await listInventoryItems(mutationUser);
+
+    expect(updated).toMatchObject({
+      id: created.id,
+      name: "Countertop toaster",
+      domain: "electronics",
+      quantity: null,
+      capabilities: toaster.capabilities,
+      source: "photo",
+    });
+    expect(Date.parse(updated!.updatedAt)).toBeGreaterThanOrEqual(
+      Date.parse(created.updatedAt),
+    );
+    expect(afterEdit).toEqual([updated]);
+
+    const afterEditScore = await handleEvaluate(
+      { text: "Convection countertop oven — $129" },
+      "integration-after-edit",
+      afterEdit,
+    );
+    expect(
+      (afterEditScore.body as EvaluateResult).verdict.rows.find(
+        (row) => row.capability === "toasts bread",
+      )?.bestCoverer,
+    ).toBe("Countertop toaster");
+
+    await expect(
+      deleteInventoryItem(mutationUser, created.id),
+    ).resolves.toBe(true);
+    const afterDelete = await listInventoryItems(mutationUser);
+    expect(afterDelete).toEqual([]);
+
+    const afterDeleteScore = await handleEvaluate(
+      { text: "Convection countertop oven — $129" },
+      "integration-after-delete",
+      afterDelete,
+    );
+    expect((afterDeleteScore.body as EvaluateResult).verdict.coveredCount).toBe(0);
   });
 });
