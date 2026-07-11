@@ -1,6 +1,6 @@
 # FunctionGraph — Product & System Specification
 
-**Status:** v1.0 · source of truth
+**Status:** v1.1 · source of truth
 **Precedence:** Where this document conflicts with README.md, CLAUDE.md,
 visualization-design.md, code comments, or chat history, **this document
 wins**. CLAUDE.md is the operational companion; visualization-design.md is
@@ -78,6 +78,11 @@ MUST NOT substitute synonyms.
   covererCount, weight }` — `capSlug` = lowercase, non-alphanumerics
   collapsed to single hyphens.
 - **DM-7** Storage is versioned JSON (inventory, demo cache). No database.
+- **DM-8** A photo scan candidate is provisional:
+  `{ id, name, quantity|null, suggestedDomain, confidence, evidence,
+  capabilities }`. `confidence` is a review priority, not a calibrated
+  probability. Scan responses MUST carry `needsReview: true` and MUST NOT
+  mutate DM-7 storage.
 
 ---
 
@@ -125,11 +130,13 @@ MUST NOT substitute synonyms.
 
 ---
 
-## 5. Evaluation API contract
+## 5. API contracts
 
-- **API-1** Single endpoint: `POST /api/evaluate` with `{ text: string }`
-  (3–1500 chars). Response:
+- **API-1** The backend exposes two Clerk-protected live endpoints.
+  `POST /api/evaluate` accepts `{ text: string }` (3–1500 chars) and returns
   `{ name, price, capabilities, verdict, altSuggestion, cached }`.
+  `POST /api/inventory/scan` is specified by API-7. Bundled demo evaluation
+  remains available without a live model call.
 - **API-2 (resolution order)** (1) bundled demo cache, keyed per API-3 —
   instant, offline-proof; (2) warm in-memory memo; (3) live: structured LLM
   decomposition → canonicalization (ALG-2) → scoring (ALG-5).
@@ -146,9 +153,25 @@ MUST NOT substitute synonyms.
   `{ error, hint }` where `hint` tells the user what to do
   ("tap an example — those never touch the network"), per CNT-6. Garbage
   input MUST yield a friendly 4xx hint, never a hang or a crash.
-- **API-6** The model snapshot MUST be pinned via environment config.
-  A minimal per-IP rate limit SHOULD guard the live path while the endpoint
-  is public.
+- **API-6** Model snapshots MUST be pinned via environment config.
+  A minimal per-IP rate limit SHOULD guard live evaluation. Photo inference
+  MUST be limited per authenticated Clerk user to 3 provider calls/minute.
+- **API-7 (photo inventory draft)** `POST /api/inventory/scan` accepts
+  `{ imageDataUrl, roomHint? }`. It accepts base64 data URLs containing JPEG,
+  PNG, or WebP only; decoded input is capped at 2.5 MiB and 40 megapixels.
+  Before inference the server MUST validate content against MIME, auto-rotate,
+  strip metadata, flatten transparency, resize within 2048×2048, and encode a
+  quality-82 JPEG. One structured vision call returns at most 20 grouped item
+  candidates with 1–6 capabilities each. Capabilities follow ALG-2, batching
+  all unmatched strings in one embeddings request. A successful response is
+  `{ items: DM-8[], warnings: string[], needsReview: true }`; no recognizable
+  objects is a successful empty list. Failures use API-5's `{ error, hint }`
+  shape with 400/413/415/422/429/503 as applicable.
+- **API-8 (photo privacy and retention)** Photo input and raw provider output
+  are ephemeral: MUST NOT be logged, cached, stored, or echoed. Responses set
+  `Cache-Control: no-store`. The provider call MUST disable storage and use a
+  one-way hash of the Clerk user id as its safety identifier. The scan creates
+  review candidates only; confirmation and persistence are future work.
 
 ---
 
@@ -293,9 +316,11 @@ the ceiling — learnable in one viewing.
   beats within SM-3 budgets.
 - **NFR-4 (accessibility)** Reduced-motion path (SM-9); visible keyboard
   focus; touch targets are real elements with generous padding.
-- **NFR-5 (operational)** Model + embedding snapshots pinned; renderer
+- **NFR-5 (operational)** Model, vision, and embedding snapshots pinned; renderer
   attribution remains visible if its license requires it; public live path
-  rate-limited (API-6); API keys server-side only.
+  rate-limited (API-6); API keys server-side only. Local photo endpoint auth
+  is exercised through a Vercel preview/deployment because Vite's development
+  middleware only emulates the evaluation handler.
 
 ---
 
@@ -326,11 +351,11 @@ the ceiling — learnable in one viewing.
 
 ## 12. Scope & degradation
 
-- **SCP-1 (out of scope — roadmap/slides only)** photo ingestion · browser
-  extension · persistent override learning · capability instance counts ·
+- **SCP-1 (out of scope — roadmap/slides only)** browser extension · camera
+  UI · scan confirmation/persistence · persistent override learning · capability instance counts ·
   categories beyond kitchen + electronics · databases · split-view routing.
-  Agents MUST NOT implement these without explicit human sign-off and a
-  stated schedule cost.
+  Agents MUST NOT implement these without explicit human sign-off recorded in
+  the decision log.
 - **SCP-2 (degradation ladder, cut in order)** (1) home level + Beat 2 →
   single-level graph, all domains coexist (clusters still separate
   organically; Beat 2 collapses into Beat 1's scan; no-match still yields
@@ -346,8 +371,8 @@ the ceiling — learnable in one viewing.
 
 React Flow (@xyflow/react v12) + d3-force · dark node-editor theme ·
 `gpt-4.1-mini` (pinned snapshot) with structured outputs ·
-`text-embedding-3-small` · Vercel-shaped repo with a single serverless
-endpoint · JSON seed data (19 items: 13 kitchen + 6 electronics, including
+`text-embedding-3-small` · Sharp image normalization · Vercel-shaped repo with
+two serverless endpoints · JSON seed data (19 items: 13 kitchen + 6 electronics, including
 the planted `boils water` and `keeps food warm` weak links and the
 degree-6 `charges usb-c devices` hub). An inherited codebase MAY substitute
 equivalents that satisfy §§4–10; the numbers in §§4–6 remain normative.
@@ -373,6 +398,9 @@ per SM-3 · caps per product 3–8 · input 3–1500 chars.
 | Route pause (600 ms toast) | auto-navigation without warning reads as losing control |
 | Designed approval state | proves PR-1; the drone arc is the best answer to "it just says no" |
 | Demo cache + try-these chips | unaccompanied judges + venue networks are the real environment |
+| Backend-only photo inventory draft | user sign-off promoted photo ingestion from roadmap scope; one ephemeral vision pass finds visible owned items without adding a database or changing the graph |
+| Photo candidates require review | visual identification and approximate counts are uncertain; confirmation and persistence remain future work |
+| Scope changes use sign-off + decision log | schedule and project-cost estimates are not normative product requirements; product price/delta economics remain normative in ALG-7 and DEM-1 |
 
 ---
 
@@ -389,4 +417,4 @@ per SM-3 · caps per product 3–8 · input 3–1500 chars.
 - [ ] Scripted arcs resolve offline from the demo cache; garbage input returns a hint (NFR-1, API-5)
 - [ ] Three arcs completable one-handed on a phone, unaided (NFR-2)
 - [ ] Reduced-motion path verified; back control visible off-home (SM-9, VIS-6)
-- [ ] Nothing from SCP-1 implemented; SCP-3 items all present
+- [ ] Photo scans are ephemeral review drafts (API-7/8); nothing remaining in SCP-1 is implemented; SCP-3 items all present

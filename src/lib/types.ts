@@ -60,6 +60,26 @@ export interface EvaluateError {
   hint: string;
 }
 
+export type InventoryScanDomain = "kitchen" | "electronics" | "unclassified";
+export type InventoryScanConfidence = "high" | "medium" | "low";
+
+/** API-7: provisional, review-required candidate produced from one photo. */
+export interface InventoryScanCandidate {
+  id: string;
+  name: string;
+  quantity: number | null;
+  suggestedDomain: InventoryScanDomain;
+  confidence: InventoryScanConfidence;
+  evidence: string;
+  capabilities: Capability[];
+}
+
+export interface InventoryScanResult {
+  items: InventoryScanCandidate[];
+  warnings: string[];
+  needsReview: true;
+}
+
 /** DM-7: storage is versioned JSON. */
 export interface InventoryFile {
   version: number;

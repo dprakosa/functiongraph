@@ -12,9 +12,8 @@ user's Buy anyway path.
 The implementation follows [PDD.md](./PDD.md), the product and system source of
 truth. Its requirements take precedence over this README and code comments;
 normative values may only change with human sign-off and a PDD decision-log
-entry. The app uses React, TypeScript, D3, SVG, versioned JSON data, and a
-single Vercel-compatible evaluation endpoint. There is no database or
-persistence.
+entry. The app uses React, TypeScript, D3, SVG, versioned JSON data, and two
+Vercel-compatible backend endpoints. There is no database or persistence.
 
 ## Run locally
 
@@ -86,16 +85,31 @@ Failures use `{ "error": string, "hint": string }`; the hint always gives the
 user a next step. Non-`POST` requests receive the same shaped contract with a
 405 status.
 
-Set these server-side environment variables for arbitrary product evaluation:
+Both live endpoints require a verified Clerk session in production. Configure
+the browser and server with matching Clerk instance keys and exact allowed
+origins (no trailing slash):
+
+```bash
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+CLERK_AUTHORIZED_PARTIES=https://your-app.example,http://localhost:5173
+```
+
+Set these server-side environment variables for arbitrary product evaluation
+and photo scanning:
 
 ```bash
 OPENAI_API_KEY=...
 OPENAI_MODEL=gpt-4.1-mini-2025-04-14
+OPENAI_VISION_MODEL=gpt-4.1-mini-2025-04-14
 OPENAI_EMBED_MODEL=text-embedding-3-small
 OPENAI_EMBED_REVISION=deployment-v1
 ```
 
-All four values are required for the live path. `OPENAI_MODEL` must be an
+The API key, general model, embedding model, and embedding revision are
+required. `OPENAI_VISION_MODEL` is optional and falls back to `OPENAI_MODEL`.
+Every chat model must be an
 immutable dated snapshot rather than a mutable alias. OpenAI embeddings use a
 stable model ID rather than a dated public snapshot, so
 `OPENAI_EMBED_REVISION` is the deployment-owned cache revision: bump it whenever
@@ -103,10 +117,19 @@ the embedding model or configuration changes so vocabulary vectors are
 regenerated. See [`.env.example`](./.env.example). API keys must never be
 exposed to the client.
 
+`POST /api/inventory/scan` accepts a JPEG, PNG, or WebP base64 data URL and
+returns a provisional list of visible owned items for review. It does not
+write to the inventory or any database. See
+[docs/inventory-scan.md](./docs/inventory-scan.md) for its request, response,
+privacy, size, and operational contracts.
+
 For Vercel, deploy the repository as a Vite project, use `npm run build`, set
 the output directory to `dist`, and configure the environment variables above.
-`api/evaluate.ts` is deployed as the serverless function. The bundled demo arcs
-continue to work if the live service is unavailable.
+`api/evaluate.ts` and `api/inventory/scan.ts` deploy as serverless functions.
+The bundled demo arcs continue to work if the live service is unavailable.
+Vite's development middleware only emulates `/api/evaluate`; use a Vercel
+preview or deployment to exercise the Clerk-protected photo endpoint end to
+end.
 
 ## Repository map
 
@@ -116,8 +139,9 @@ continue to work if the live service is unavailable.
 - `src/state/` — evaluation client, reducer, and four-beat scheduler.
 - `src/lib/` — scoring, vocabulary, routing, copy, and graph derivation.
 - `src/data/` — versioned inventory and decomposition-only demo cache.
-- `api/evaluate.ts` and `api/_lib/` — serverless API, resolution handler, and
-  live structured decomposition/canonicalization.
+- `api/evaluate.ts`, `api/inventory/scan.ts`, and `api/_lib/` — authenticated
+  serverless APIs, safe image preprocessing, and shared structured
+  decomposition/canonicalization.
 
 ## Verify
 

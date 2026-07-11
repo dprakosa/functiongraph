@@ -38,7 +38,10 @@ function response() {
 describe("POST /api/evaluate authentication boundary", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(authenticateEvaluateRequest).mockResolvedValue({ ok: true });
+    vi.mocked(authenticateEvaluateRequest).mockResolvedValue({
+      ok: true,
+      userId: "user_test",
+    });
   });
 
   it("keeps the friendly 405 contract without invoking authentication", async () => {

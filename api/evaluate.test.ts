@@ -15,7 +15,10 @@ import { handleEvaluate } from "./_lib/handler";
 
 describe("POST /api/evaluate production wrapper", () => {
   beforeEach(() => {
-    vi.mocked(authenticateEvaluateRequest).mockResolvedValue({ ok: true });
+    vi.mocked(authenticateEvaluateRequest).mockResolvedValue({
+      ok: true,
+      userId: "user_test",
+    });
   });
 
   it("returns an API-5 next step when the handler fails unexpectedly", async () => {

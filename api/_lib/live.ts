@@ -180,6 +180,14 @@ export function followsCapabilityNamingLaw(name: string): boolean {
 export function finalizeCanonicalCapabilities(
   capabilities: Capability[],
 ): Capability[] {
+  return finalizeCapabilities(capabilities, 3, 8);
+}
+
+function finalizeCapabilities(
+  capabilities: Capability[],
+  minItems: number,
+  maxItems: number,
+): Capability[] {
   const deduped = new Map<string, Capability>();
   capabilities.forEach((capability) => {
     if (
@@ -200,9 +208,9 @@ export function finalizeCanonicalCapabilities(
   });
 
   const finalized = [...deduped.values()];
-  if (finalized.length < 3 || finalized.length > 8) {
+  if (finalized.length < minItems || finalized.length > maxItems) {
     throw new Error(
-      "canonical decomposition must contain 3-8 unique capabilities",
+      `canonical decomposition must contain ${minItems}-${maxItems} unique capabilities`,
     );
   }
   const invalid = finalized.find(
@@ -212,6 +220,66 @@ export function finalizeCanonicalCapabilities(
     throw new Error(`capability violates the naming law: ${invalid.name}`);
   }
   return finalized;
+}
+
+/**
+ * Canonicalize every candidate together so unmatched capability strings share
+ * one embeddings request. Exact vocabulary matches never use embeddings.
+ */
+export async function canonicalizeCapabilityGroups(
+  groups: Capability[][],
+  items: Item[],
+  config: LiveConfig,
+  limits: { min: number; max: number } = { min: 1, max: 6 },
+): Promise<Capability[][]> {
+  const vocabularyNames = [...deriveVocabulary(items).keys()];
+  const vocabularySet = new Set(vocabularyNames);
+  const normalized = groups.map((group) =>
+    group.map((capability) => ({
+      name: capability.name.toLowerCase().trim(),
+      tier: capability.tier,
+    })),
+  );
+  const unmatchedNames = [
+    ...new Set(
+      normalized
+        .flat()
+        .map((capability) => capability.name)
+        .filter((name) => !vocabularySet.has(name)),
+    ),
+  ];
+
+  if (unmatchedNames.length > 0 && vocabularyNames.length > 0) {
+    const [vocab, unmatchedVectors] = await Promise.all([
+      vocabularyVectors(
+        vocabularyNames,
+        config.apiKey,
+        config.embedModel,
+        config.embedRevision,
+      ),
+      embed(unmatchedNames, config.apiKey, config.embedModel),
+    ]);
+    const snapped = new Map<string, string>();
+    unmatchedNames.forEach((name, index) => {
+      let bestScore = -1;
+      let bestName: string | null = null;
+      vocab.vectors.forEach((vector, vocabIndex) => {
+        const score = cosine(unmatchedVectors[index], vector);
+        if (score > bestScore) {
+          bestScore = score;
+          bestName = vocab.names[vocabIndex];
+        }
+      });
+      if (bestName && bestScore >= SNAP_THRESHOLD) snapped.set(name, bestName);
+    });
+    normalized.flat().forEach((capability) => {
+      capability.name = snapped.get(capability.name) ?? capability.name;
+    });
+  }
+
+  return normalized.map((group) =>
+    finalizeCapabilities(group, limits.min, limits.max),
+  );
 }
 
 function cosine(a: number[], b: number[]): number {
@@ -310,49 +378,12 @@ export async function decomposeLive(
     throw new Error("not a product");
   }
 
-  // ALG-2 (2): exact string match against the vocabulary.
-  const vocabularySet = new Set(vocabularyNames);
-  const capabilities = raw.capabilities.map((capability) => ({
-    name: capability.name.toLowerCase().trim(),
-    tier: capability.tier,
-  }));
-  const unmatched = capabilities.filter(
-    (capability) => !vocabularySet.has(capability.name),
+  const [finalizedCapabilities] = await canonicalizeCapabilityGroups(
+    [raw.capabilities],
+    items,
+    { apiKey, chatModel, embedModel, embedRevision },
+    { min: 3, max: 8 },
   );
-
-  // ALG-2 (3): embed and snap to the nearest entry at cosine ≥ 0.83.
-  if (unmatched.length > 0) {
-    const [vocab, unmatchedVectors] = await Promise.all([
-      vocabularyVectors(
-        vocabularyNames,
-        apiKey,
-        embedModel,
-        embedRevision,
-      ),
-      embed(
-        unmatched.map((capability) => capability.name),
-        apiKey,
-        embedModel,
-      ),
-    ]);
-    unmatched.forEach((capability, index) => {
-      let bestScore = -1;
-      let bestName: string | null = null;
-      vocab.vectors.forEach((vector, vocabIndex) => {
-        const score = cosine(unmatchedVectors[index], vector);
-        if (score > bestScore) {
-          bestScore = score;
-          bestName = vocab.names[vocabIndex];
-        }
-      });
-      if (bestName && bestScore >= SNAP_THRESHOLD) {
-        capability.name = bestName;
-      }
-      // ALG-2 (4): otherwise it stays as-is — a new capability.
-    });
-  }
-
-  const finalizedCapabilities = finalizeCanonicalCapabilities(capabilities);
 
   return {
     name: raw.name,

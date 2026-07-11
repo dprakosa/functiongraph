@@ -3,7 +3,7 @@ import type { VercelRequest } from "@vercel/node";
 import type { EvaluateError } from "../../src/lib/types";
 
 export type AuthOutcome =
-  | { ok: true }
+  | { ok: true; userId: string }
   | { ok: false; status: 401 | 503; body: EvaluateError };
 
 type AuthConfig = {
@@ -231,8 +231,8 @@ function toWebRequest(request: VercelRequest): Request {
   });
 }
 
-/** Authenticate the live evaluate path while leaving the offline demo untouched. */
-export async function authenticateEvaluateRequest(
+/** Authenticate a server-side live feature and return its stable Clerk user id. */
+export async function authenticateApiRequest(
   request: VercelRequest,
 ): Promise<AuthOutcome> {
   const config = loadAuthConfig();
@@ -260,7 +260,9 @@ export async function authenticateEvaluateRequest(
 
     if (state.isAuthenticated && state.tokenType === "session_token") {
       const auth = state.toAuth({ treatPendingAsSignedOut: true });
-      return auth.isAuthenticated ? { ok: true } : UNAUTHENTICATED;
+      return auth.isAuthenticated && auth.userId
+        ? { ok: true, userId: auth.userId }
+        : UNAUTHENTICATED;
     }
     if (state.reason && VERIFIER_FAILURE_REASONS.has(state.reason)) {
       return AUTH_UNAVAILABLE;
@@ -272,3 +274,6 @@ export async function authenticateEvaluateRequest(
     return AUTH_UNAVAILABLE;
   }
 }
+
+/** Backwards-compatible name for the existing evaluate wrapper. */
+export const authenticateEvaluateRequest = authenticateApiRequest;

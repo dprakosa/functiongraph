@@ -137,7 +137,7 @@ describe("authenticateEvaluateRequest", () => {
   });
 
   it("accepts an authenticated session", async () => {
-    const toAuth = vi.fn(() => ({ isAuthenticated: true }));
+    const toAuth = vi.fn(() => ({ isAuthenticated: true, userId: "user_test" }));
     mocks.authenticateRequest.mockResolvedValue({
       isAuthenticated: true,
       tokenType: "session_token",
@@ -147,6 +147,7 @@ describe("authenticateEvaluateRequest", () => {
 
     await expect(authenticateEvaluateRequest(request())).resolves.toEqual({
       ok: true,
+      userId: "user_test",
     });
     expect(toAuth).toHaveBeenCalledWith({ treatPendingAsSignedOut: true });
   });
@@ -172,7 +173,7 @@ describe("authenticateEvaluateRequest", () => {
       isAuthenticated: true,
       tokenType: "session_token",
       reason: null,
-      toAuth: () => ({ isAuthenticated: true }),
+      toAuth: () => ({ isAuthenticated: true, userId: "user_test" }),
     });
 
     await authenticateEvaluateRequest(request());
@@ -269,7 +270,7 @@ describe("authenticateEvaluateRequest", () => {
       isAuthenticated: true,
       tokenType: "session_token",
       reason: null,
-      toAuth: () => ({ isAuthenticated: true }),
+      toAuth: () => ({ isAuthenticated: true, userId: "user_test" }),
     });
 
     const outcome = await authenticateEvaluateRequest(
@@ -282,7 +283,7 @@ describe("authenticateEvaluateRequest", () => {
       }),
     );
 
-    expect(outcome).toEqual({ ok: true });
+    expect(outcome).toEqual({ ok: true, userId: "user_test" });
     expect(mocks.authenticateRequest).toHaveBeenCalledOnce();
   });
 });
