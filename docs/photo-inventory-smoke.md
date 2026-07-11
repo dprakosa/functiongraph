@@ -42,6 +42,16 @@ The local command needs only the matching Clerk development secret and the
 branch alias. Set secrets in the shell or an approved secret manager; never
 paste them into issues, logs, or command history.
 
+Because `CLERK_AUTHORIZED_PARTIES` accepts exact origins rather than
+wildcards, add a branch-scoped Preview override containing localhost and this
+Preview's persistent branch alias, then redeploy the Git branch:
+
+```sh
+vercel env add CLERK_AUTHORIZED_PARTIES preview YOUR_GIT_BRANCH \
+  --value 'http://localhost:5173,https://YOUR_BRANCH_ALIAS.vercel.app' \
+  --yes --no-sensitive
+```
+
 ```sh
 export LIVE_PHOTO_SMOKE=1
 export PHOTO_SMOKE_BASE_URL=https://functiongraph-git-your-branch-team.vercel.app
