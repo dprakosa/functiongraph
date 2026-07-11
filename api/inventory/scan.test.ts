@@ -102,6 +102,35 @@ describe("POST /api/inventory/scan", () => {
     expect(handleInventoryScan).not.toHaveBeenCalled();
   });
 
+  it.each([400, 413, 415, 422, 429, 503] as const)(
+    "passes through a shaped %i scan failure without caching",
+    async (failureStatus) => {
+      const body = {
+        error: "photo scan failed safely",
+        hint: "adjust the photo and try again",
+      };
+      vi.mocked(handleInventoryScan).mockResolvedValue({
+        status: failureStatus,
+        body,
+      });
+      const { response, status, json, setHeader } = responseMock();
+
+      await scanInventory(
+        {
+          method: "POST",
+          body: { imageDataUrl: "data:image/jpeg;base64,aW1hZ2U=" },
+          headers: {},
+          socket: {},
+        } as unknown as VercelRequest,
+        response,
+      );
+
+      expect(setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
+      expect(status).toHaveBeenCalledWith(failureStatus);
+      expect(json).toHaveBeenCalledWith(body);
+    },
+  );
+
   it("fails closed when personal inventory cannot be loaded", async () => {
     vi.mocked(listInventoryItems).mockRejectedValue(
       new InventoryStoreUnavailableError(),
