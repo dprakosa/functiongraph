@@ -30,6 +30,10 @@ export function resetEvaluateMemoForTests(): void {
 const LIVE_CALLS_PER_MINUTE = 10;
 const liveCallLog = new Map<string, number[]>();
 
+export function resetEvaluateRateLimitForTests(): void {
+  liveCallLog.clear();
+}
+
 function liveRateLimited(clientIp: string, now: number): boolean {
   const recent = (liveCallLog.get(clientIp) ?? []).filter(
     (at) => now - at < 60_000,
