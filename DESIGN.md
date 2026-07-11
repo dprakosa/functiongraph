@@ -4,13 +4,13 @@
 
 This is the repository's authoritative visual implementation guide. **`PDD.md` is the highest-precedence source of truth**—that is the actual specification filename in this repository. If this guide, the generated Linear reference, `README.md`, `CLAUDE.md`, `visualization-design.md`, code comments, or chat history conflicts with `PDD.md`, follow `PDD.md`. Do not alter normative requirement IDs, values, algorithms, state ordering, or scope through visual work.
 
-FunctionGraph is a precise, bright, technical decision tool: Linear-inspired interface discipline applied to a node-editor workspace. Keep the ultra-minimal white shell, dense readable layout, light neutral surface ladder, hairline borders, compact controls, strong type hierarchy, and fast polish. The graph—not a marketing page or dashboard grid—is the product and the visual centre.
+FunctionGraph is a precise, bright, technical decision tool: Linear-inspired interface discipline applied to a node-editor workspace. Keep the ultra-minimal white shell, dense readable layout, light neutral surface ladder, hairline borders, compact controls, strong type hierarchy, and fast polish. On `/graph`, the graph—not a marketing page or dashboard grid—is the product and the visual centre. The approved `/` route is a compact explanation and entry point, not a replacement for the graph experience.
 
-It must not resemble a generic SaaS landing page, a collection of unrelated cards, a colourful analytics dashboard, neon cyberpunk, glassmorphism, a Linear issue-tracker clone, or a marketing homepage wrapped around a graph.
+Neither route may resemble a generic SaaS template, a collection of unrelated cards, a colourful analytics dashboard, neon cyberpunk, glassmorphism, or a Linear issue-tracker clone. Keep the landing page restrained and specific to FunctionGraph instead of wrapping marketing sections around a live graph.
 
 ## Design laws
 
-1. The live graph is the dominant surface at every viewport.
+1. The live graph is the dominant surface at every `/graph` viewport; `/` remains a compact, graph-free landing page.
 2. Exactly two colours communicate verdict state: coral means `covered`; green means `new`.
 3. Amber is restricted to home-level hotspot badges. Everything else is graphite.
 4. The ghost is the only node with a glow. The transient edge pulse required by VIS-4 is the only non-node exception and lasts no longer than two seconds.
@@ -83,14 +83,31 @@ font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
 
 ## Application composition
 
-Use one compact app shell without a persistent top header. It contains:
+Use a route-aware shell with shared FunctionGraph branding and Clerk account state. Navigation uses ordinary `/` and `/graph` links, preserves browser Back/Forward behavior, and restores focus to the destination heading. Keep account controls compact; do not introduce a persistent dashboard navigation rail.
+
+### Landing page (`/`)
+
+The public landing page is a short entry point built from the existing tokens. It contains:
+
+- a concise capability-level value proposition and primary `Open the graph` action;
+- a clear explanation that guests can explore the bundled demo;
+- one compact three-step sequence: capture what you own, map a product, inspect the genuinely-new delta;
+- a privacy/account note: photos and review details are ephemeral, while confirmed items belong to the signed-in account;
+- shared sign-in/account controls and a small footer.
+
+Keep the content within a restrained reading width and one or two viewport lengths. Use typography, hairlines, and small grouped steps rather than a giant hero, live D3 preview, gradient, testimonial wall, pricing grid, or repeated marketing cards.
+
+### Graph page (`/graph`)
+
+Use one compact graph application shell without a persistent top header. It contains:
 
 - the purchase-evaluation title and one-line explanation;
 - a back control whenever the user is off home level;
 - product command bar and mandatory example chips;
-- the graph workspace, route toast, and verdict panel.
+- a compact photo action and explicit inventory status;
+- the graph workspace, route toast, and one contextual rail used by the verdict, photo review, or item inspector.
 
-The graph occupies most of the available viewport and most desktop width. Do not surround it with a conventional dashboard grid. On desktop, place the verdict beside the graph with a sensible maximum width and fit the camera to both; never replace or obscure the graph.
+The graph occupies most of the available viewport and most desktop width. Do not surround it with a conventional dashboard grid. On desktop, place the active contextual rail beside the graph with a sensible maximum width and fit the camera to both; never replace or obscure the graph. Show only one rail mode at a time and preserve the user's graph context when it changes.
 
 ### Product command bar
 
@@ -111,6 +128,32 @@ Home and room views are data swaps and camera moves on the same force-directed c
 Never hardcode node positions or domain membership. Seed structural updates from current positions, let clusters emerge from shared capabilities, allow the simulation to cool fully, and never add idle motion. Reheat only for structural change: phase, expansion, a new result, or local drag. Hover, selection, row pulse, and other cosmetic highlights must not reheat the full simulation.
 
 The relationship hierarchy is home room → owned item → capability. Entering a room swaps the same canvas to its item/capability graph. Owned items connect only to capability hubs or their revealed unique mini-capabilities; item-to-item edges are forbidden. Selecting an item applies a neutral emphasis to that item, every connected capability node, and their inventory edges while visibly dimming unrelated nodes and inventory edges. It must not recolour verdict semantics or reheat physics unless unique mini-capabilities are structurally revealed.
+
+### Inventory states and empty graph
+
+Guests see the bundled 36-item inventory and all three offline examples. Signed-in users see only their personal inventory, with distinct loading, error, empty, and populated states. Never flash guest items while account data loads and never substitute them after an error.
+
+The empty personal state keeps the graph workspace visually stable but replaces unusable graph controls with a concise explanation and primary photo action. It tells the user that their account starts empty and that confirmed items will build the graph. Loading uses a quiet structural placeholder; errors retain a retry and an actionable hint without inventing data.
+
+### Photo capture and review
+
+Place one prominent but compact photo action near inventory status. It offers environment-camera capture and ordinary file upload to signed-in users; guests receive sign-in before any file picker opens. State the supported JPEG, PNG, and WebP formats and explain that HEIC is not supported in this release.
+
+Use the contextual rail for preparation, scan status, review, and confirmation on wide screens; use an in-flow full-width sheet below the graph on narrow screens. Show a local preview while it is needed, then release it on cancel, completion, navigation, or unmount. Scanning uses plain status copy, not a fake percentage.
+
+Review every candidate as a compact selectable row. Name, room, and quantity are editable with inline validation; detected capabilities and tiers are visible but read-only. Confidence, evidence, and warnings help review but are visually secondary and are never represented as saved fields. Keep confirm disabled until at least one selected row is valid. Saving succeeds as one transaction, refreshes the graph, announces the result, and clears the entire draft; failure preserves the review so the user can retry.
+
+### Item inspector
+
+Selecting a saved personal item opens the contextual rail without changing its existing neutral graph highlight. Display name, room, quantity, canonical capabilities, `photo` source, and last-updated time. Edit mode permits name, room, and quantity only. Apply the graph update after the server confirms success, not optimistically.
+
+Deletion uses a separate explicit confirmation naming the item. A failed save or delete keeps the last confirmed graph state and shows the server hint. Closing the inspector or navigating away discards unsaved edits. Focus enters the inspector predictably and returns to the selected node when it remains available.
+
+### Node tooltips
+
+Render one viewport-clamped HTML tooltip above the SVG layers. Open it on pointer hover and keyboard focus, support touch inspection, and dismiss it on pointer leave, blur, Escape, view change, node removal, or navigation. Position and visibility are cosmetic state: they never mutate D3 data, restart physics, or move nodes. Connect focused nodes to visible content with `aria-describedby` or equivalent semantics and avoid duplicate screen-reader announcements.
+
+Tooltip content is compact and type-specific: rooms show item/hotspot counts and their action; unscanned rooms show the scan action; items show room, quantity, capability count, and a short capability preview; shared hubs show owner count and a short owner preview; unique minis show owner and tier; new capabilities show provisional/new status and tier; ghosts show product, price when known, and evaluation phase. Every essential fact and action remains reachable without hover.
 
 ### Node taxonomy
 
@@ -207,6 +250,8 @@ Motion budgets:
 
 Use eased motion; only edge dash-flow may be linear. Do not add decorative entrances unrelated to computation.
 
+Photo preparation, scanning, review, and saving are explicit state changes but do not join the four-beat product-evaluation choreography. Use a quiet indeterminate status for real waiting, prevent duplicate submission, and avoid fabricated progress. Inventory refresh may structurally rebuild the graph only after confirmation succeeds.
+
 ### Reduced motion
 
 Under `prefers-reduced-motion`:
@@ -227,19 +272,23 @@ Below roughly `720px`:
 
 - keep one product flow and one canvas;
 - render the graph first and stack the verdict beneath it;
+- place photo review and the item inspector in the same full-width contextual position as the verdict;
 - keep the command bar and actions reachable one-handed;
 - wrap or horizontally scroll example chips;
 - preserve generous touch targets and readable labels;
 - make every important action available without hover;
 - never shrink node labels into illegibility.
 
-Do not create a separate mobile route, graph, or reduced product flow.
+On the landing page, stack the three-step sequence and keep the primary graph action visible without horizontal scrolling. Do not create a separate mobile route, graph, or reduced product flow.
 
 ## Accessibility
 
 - Use semantic HTML for inputs, buttons, notices, and interactive verdict rows.
 - Make all controls and rows keyboard-operable with a clearly visible neutral focus indicator.
 - Give graph actions accessible names where practical and expose equivalent non-canvas controls for essential actions.
+- Make tooltip content available through focus and touch, with Escape dismissal and no hover-only actions.
+- Associate photo-review validation with its candidate fields, announce scan/save status without fake progress, and return focus after cancel or confirmation.
+- Treat route headings as focus destinations and provide a useful not-found page with links to both routes.
 - Do not rely on colour alone for `covered` versus `new`; retain text and shape/style cues.
 - Use adequate touch padding and readable contrast on every graphite surface.
 - Announce route, error, and result changes appropriately without producing duplicate screen-reader chatter.
@@ -251,9 +300,16 @@ Reuse the current framework, graph library, styling approach, and working applic
 
 ```text
 AppShell
+LandingPage
+GraphPage
 ProductCommandBar
 DemoProductChips
+InventoryStatus
+PhotoCapture
+PhotoReview
+ItemInspector
 GraphWorkspace
+GraphTooltip
 RoomNode
 ItemNode
 CapabilityHubNode
@@ -268,26 +324,30 @@ VerdictActions
 ImpactCounter
 ```
 
-Keep graph and verdict data derived, never duplicated. Do not hardcode verdict percentages, demo outcomes, node positions, or scoring results into UI components. Preserve the seven-interaction ceiling from INT-1–INT-7 and all fixed copy and IDs from `PDD.md`.
+Keep graph, inventory, and verdict data derived, never duplicated. Page components consume one normalized active-inventory source: guest JSON for guests and Clerk-scoped personal data for accounts. Do not put database rows directly into D3 selections or hardcode verdict percentages, demo outcomes, node positions, or scoring results into UI components. Preserve all fixed copy, semantic laws, and IDs from `PDD.md`.
 
 ## Do / do not
 
 ### Do
 
 - Make the graph the protagonist and the shell a quiet frame.
+- Keep `/` compact and graph-free; keep `/graph` focused on the working graph.
 - Use the exact light neutral ladder, hairlines, compact spacing, and small radii.
 - Use coral only for covered/redundant evidence and green only for genuinely new evidence.
 - Reserve amber for home hotspot badges and glow for the ghost, apart from the brief VIS-4 pulse exception.
 - Keep panels dense, typography calm, controls compact, and supporting text muted.
 - Preserve force-driven emergence, edge inspectability, offline demo arcs, approval, and both decision actions.
+- Make guest, account loading, empty, error, and populated inventory states visually explicit.
+- Discard raw photos and review-only information after cancel, navigation, failure cleanup, or successful confirmation.
 - Verify desktop, mobile, keyboard, reduced-motion, simulation cooling, and every row-to-edge mapping.
 
 ### Do not
 
 - Do not restore Linear lavender or introduce any third speaking colour.
 - Do not add gradients, glass effects, neon glows, strong grids, excessive shadows, huge type, giant radii, or large floating cards.
-- Do not turn the app into a landing page, dashboard, issue tracker, or split-view router.
+- Do not turn `/graph` into a landing page, dashboard, issue tracker, or competing multi-canvas view; do not let `/` grow into a generic marketing site.
 - Do not make all nodes or edges equally loud.
 - Do not hardcode positions, domains, scores, percentages, or demo-only visual outcomes.
 - Do not reheat physics for hover, highlighting, selection, or edge pulse.
-- Do not add idle node motion, arbitrary interactions, a database, photo ingestion, a browser extension, persistent learning, or other `SCP-1` scope.
+- Do not persist raw images, provider output, confidence, evidence, warnings, or review drafts; do not expose capability editing or manual item creation.
+- Do not add idle node motion, arbitrary interactions, a browser extension, persistent override learning, or other remaining `SCP-1` scope.
