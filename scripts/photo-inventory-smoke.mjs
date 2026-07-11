@@ -27,14 +27,23 @@ function requireEnvironment(name) {
   return value;
 }
 
-function previewBaseUrl() {
+function smokeBaseUrl() {
   const raw = requireEnvironment("PHOTO_SMOKE_BASE_URL");
   let url;
   try {
     url = new URL(raw);
   } catch {
-    throw new SmokeFailure("invalid-preview-url");
+    throw new SmokeFailure("invalid-smoke-url");
   }
+
+  const production = process.env.LIVE_PHOTO_SMOKE_PRODUCTION === "1";
+  if (production) {
+    if (url.origin !== "https://dprakosa.com" || url.pathname !== "/") {
+      throw new SmokeFailure("production-url-required");
+    }
+    return url.origin;
+  }
+
   if (
     url.protocol !== "https:" ||
     url.pathname !== "/" ||
@@ -92,7 +101,8 @@ async function main() {
     throw new SmokeFailure("live-smoke-opt-in-required");
   }
 
-  const baseUrl = previewBaseUrl();
+  const baseUrl = smokeBaseUrl();
+  const production = process.env.LIVE_PHOTO_SMOKE_PRODUCTION === "1";
   const clerk = createClerkClient({
     secretKey: requireEnvironment("CLERK_SECRET_KEY"),
   });
@@ -178,6 +188,61 @@ async function main() {
     }
   }
 
+  async function createProductionSession(userId) {
+    const started = performance.now();
+    let response;
+    try {
+      const [testingToken, signInToken] = await Promise.all([
+        clerk.testingTokens.createTestingToken(),
+        clerk.signInTokens.createSignInToken({
+          userId,
+          expiresInSeconds: 60,
+        }),
+      ]);
+      response = await fetch(
+        `https://clerk.dprakosa.com/v1/client/sign_ins?__clerk_testing_token=${encodeURIComponent(testingToken.token)}`,
+        {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "content-type": "application/x-www-form-urlencoded",
+            origin: baseUrl,
+          },
+          body: new URLSearchParams({
+            strategy: "ticket",
+            ticket: signInToken.token,
+          }),
+          signal: AbortSignal.timeout(15_000),
+        },
+      );
+    } catch {
+      throw new SmokeFailure("clerk-production-session-network");
+    }
+    if (!response.ok) {
+      throw new SmokeFailure("clerk-production-session-create", response.status);
+    }
+
+    let body;
+    try {
+      body = await response.json();
+    } catch {
+      throw new SmokeFailure("clerk-production-session-json", response.status);
+    }
+    const sessionId =
+      body?.response?.created_session_id ??
+      body?.created_session_id ??
+      body?.client?.sessions?.find((session) => session?.status === "active")?.id;
+    if (typeof sessionId !== "string") {
+      throw new SmokeFailure("clerk-production-session-id", response.status);
+    }
+    log("clerk.session.created", { status: 201, ms: elapsed(started) });
+    return { id: sessionId };
+  }
+
+  const createAuthenticatedSession = production
+    ? createProductionSession
+    : createSession;
+
   async function sessionToken(sessionId) {
     try {
       return (await clerk.sessions.getToken(sessionId)).jwt;
@@ -228,8 +293,8 @@ async function main() {
       createUser("other"),
     ]);
     const [sessionA, sessionB] = await Promise.all([
-      createSession(userA.id),
-      createSession(userB.id),
+      createAuthenticatedSession(userA.id),
+      createAuthenticatedSession(userB.id),
     ]);
     ownerSessionId = sessionA.id;
     let tokenA = await sessionToken(sessionA.id);
@@ -323,23 +388,40 @@ async function main() {
     assertStatus(foreignDelete, 404, "inventory-cross-user-delete");
 
     tokenA = await sessionToken(sessionA.id);
-    const confirmedFunctions = candidate.capabilities
-      .map((capability) => capability.name)
-      .join(", ");
     const evaluation = await requestJson("evaluation.inventory", "/api/evaluate", {
       method: "POST",
       token: tokenA,
       body: {
-        text: `A basic household toaster. Existing functions: ${confirmedFunctions}.`,
+        text: "Convection countertop oven — $129",
       },
     });
     assertStatus(evaluation, 200, "evaluation-inventory");
     assertNoStore(evaluation, "evaluation-inventory");
+    if (evaluation.body?.cached !== true) {
+      throw new SmokeFailure("evaluation-cache-miss", evaluation.status);
+    }
     const coveredByConfirmedItem = evaluation.body?.verdict?.rows?.some(
       (row) => row?.covered && row?.bestCoverer === candidate.name,
     );
     if (!coveredByConfirmedItem) {
       throw new SmokeFailure("evaluation-inventory-not-used", evaluation.status);
+    }
+
+    const liveEvaluation = await requestJson(
+      "evaluation.live",
+      "/api/evaluate",
+      {
+        method: "POST",
+        token: tokenA,
+        body: {
+          text: "Compact countertop air fryer for cooking frozen food and reheating leftovers",
+        },
+      },
+    );
+    assertStatus(liveEvaluation, 200, "evaluation-live");
+    assertNoStore(liveEvaluation, "evaluation-live");
+    if (liveEvaluation.body?.cached !== false) {
+      throw new SmokeFailure("evaluation-live-not-live", liveEvaluation.status);
     }
 
     const updated = await requestJson(

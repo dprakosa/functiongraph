@@ -279,6 +279,33 @@ describe("decomposeLive canonicalization (API-4, ALG-2)", () => {
         String(url).endsWith("/embeddings"),
       ),
     ).toBe(false);
+
+    const completionCall = fetchMock.mock.calls.find(([url]) =>
+      String(url).endsWith("/chat/completions"),
+    );
+    const completionBody = JSON.parse(
+      String(completionCall?.[1]?.body),
+    ) as {
+      response_format: {
+        json_schema: {
+          schema: {
+            properties: {
+              capabilities: {
+                items: { properties: { name: Record<string, unknown> } };
+              };
+            };
+          };
+        };
+      };
+    };
+    expect(
+      completionBody.response_format.json_schema.schema.properties.capabilities
+        .items.properties.name,
+    ).toMatchObject({
+      minLength: 3,
+      maxLength: 80,
+      pattern: "^[a-z][a-z-]*s(?: [a-z][a-z0-9-]*)+$",
+    });
   });
 
   it("snaps the nearest capability at the inclusive 0.83 threshold", async () => {

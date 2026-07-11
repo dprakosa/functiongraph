@@ -112,7 +112,14 @@ const DECOMPOSITION_SCHEMA = {
         additionalProperties: false,
         required: ["name", "tier"],
         properties: {
-          name: { type: "string" },
+          name: {
+            type: "string",
+            minLength: 3,
+            maxLength: 80,
+            pattern: "^[a-z][a-z-]*s(?: [a-z][a-z0-9-]*)+$",
+            description:
+              "Lowercase present-tense verb plus object phrase, with no brand, model, number, or marketing adjective.",
+          },
           tier: { type: "string", enum: ["primary", "secondary"] },
         },
       },
