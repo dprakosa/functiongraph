@@ -1,4 +1,3 @@
-import { capSlug } from "../../src/lib/text.js";
 import { deriveVocabulary } from "../../src/lib/vocabulary.js";
 import type {
   Capability,
@@ -6,15 +5,15 @@ import type {
   ProductDecomposition,
   Tier,
 } from "../../src/lib/types.js";
-import { LiveUnavailableError } from "./errors.js";
 import {
-  fetchExistingIds,
+  fetchExistingNames,
   queryNearest,
-  readPineconeConfig,
-  upsertVectors,
+  readVectorStoreConfig,
+  upsertEmbeddings,
   vectorNamespace,
-  type PineconeConfig,
-} from "./pinecone.js";
+  type VectorStoreConfig,
+} from "./embeddingCache.js";
+import { LiveUnavailableError } from "./errors.js";
 
 /**
  * Live evaluation path (API-2 step 3): structured LLM decomposition (API-4)
@@ -242,9 +241,7 @@ export async function canonicalizeCapabilityGroups(
   config: LiveConfig,
   limits: { min: number; max: number } = { min: 1, max: 6 },
 ): Promise<Capability[][]> {
-  // Read up front so a half-configured deployment fails loudly on every live
-  // call, not only once an unmatched capability appears.
-  const pineconeConfig = readPineconeConfig();
+  const vectorStoreConfig = readVectorStoreConfig();
   const vocabularyNames = [...deriveVocabulary(items).keys()];
   const vocabularySet = new Set(vocabularyNames);
   const normalized = groups.map((group) =>
@@ -270,10 +267,10 @@ export async function canonicalizeCapabilityGroups(
     );
 
     let snapped: Map<string, string> | null = null;
-    if (pineconeConfig) {
+    if (vectorStoreConfig) {
       try {
-        snapped = await snapWithPinecone(
-          pineconeConfig,
+        snapped = await snapWithVectorStore(
+          vectorStoreConfig,
           vocabularyNames,
           unmatchedNames,
           unmatchedVectorsPromise,
@@ -282,7 +279,7 @@ export async function canonicalizeCapabilityGroups(
       } catch (error) {
         // The vector store persists what the in-process path can always
         // recompute; an outage must not take down live evaluation.
-        console.warn("pinecone unavailable — snapping in-process", error);
+        console.warn("vector store unavailable — snapping in-process", error);
       }
     }
 
@@ -322,13 +319,14 @@ export async function canonicalizeCapabilityGroups(
 }
 
 /**
- * ALG-2 step 3 against the Pinecone index: make sure every vocabulary vector
- * is persisted, then snap each unmatched name to its nearest neighbor. The
- * index shares the pinned embedding model and cosine metric with the
- * in-process path, so scores and the 0.83 threshold are interchangeable.
+ * ALG-2 step 3 against the embedding cache: make sure every vocabulary vector
+ * is persisted, then snap each unmatched name to its nearest neighbor within
+ * the active vocabulary. The cache shares the pinned embedding model and
+ * cosine metric with the in-process path, so scores and the 0.83 threshold
+ * are interchangeable.
  */
-async function snapWithPinecone(
-  pineconeConfig: PineconeConfig,
+async function snapWithVectorStore(
+  vectorStoreConfig: VectorStoreConfig,
   vocabularyNames: string[],
   unmatchedNames: string[],
   unmatchedVectorsPromise: Promise<number[][]>,
@@ -336,12 +334,12 @@ async function snapWithPinecone(
 ): Promise<Map<string, string>> {
   const namespace = vectorNamespace(config.embedModel, config.embedRevision);
   const [, unmatchedVectors] = await Promise.all([
-    ensureVocabularyVectors(pineconeConfig, namespace, vocabularyNames, config),
+    ensureVocabularyVectors(vectorStoreConfig, namespace, vocabularyNames, config),
     unmatchedVectorsPromise,
   ]);
   const nearest = await Promise.all(
     unmatchedVectors.map((vector) =>
-      queryNearest(pineconeConfig, namespace, vector),
+      queryNearest(namespace, vocabularyNames, vector),
     ),
   );
   const snapped = new Map<string, string>();
@@ -355,7 +353,7 @@ async function snapWithPinecone(
 
 /**
  * Vocabulary vectors are written once per namespace and reused across cold
- * starts; only names missing from the index are embedded. Memoized per
+ * starts; only names missing from the cache are embedded. Memoized per
  * process like vocabularyVectorsCache so warm instances skip the existence
  * check. The namespace embeds the model + revision, so the key can never
  * alias vectors across embedding deployments.
@@ -363,37 +361,28 @@ async function snapWithPinecone(
 const ensuredVocabularyCache = new Map<string, Promise<void>>();
 
 function ensureVocabularyVectors(
-  pineconeConfig: PineconeConfig,
+  vectorStoreConfig: VectorStoreConfig,
   namespace: string,
   vocabularyNames: string[],
   config: LiveConfig,
 ): Promise<void> {
+  // The database URL is part of the key so a URL change (e.g. the isolated
+  // test database) can never reuse another database's ensure result.
   const cacheKey = JSON.stringify([
-    pineconeConfig.indexName,
+    vectorStoreConfig.databaseUrl,
     namespace,
     vocabularyNames,
   ]);
   let ensured = ensuredVocabularyCache.get(cacheKey);
   if (!ensured) {
     ensured = (async () => {
-      const existing = await fetchExistingIds(
-        pineconeConfig,
-        namespace,
-        vocabularyNames.map(capSlug),
-      );
-      const missing = vocabularyNames.filter(
-        (name) => !existing.has(capSlug(name)),
-      );
+      const existing = await fetchExistingNames(namespace, vocabularyNames);
+      const missing = vocabularyNames.filter((name) => !existing.has(name));
       if (missing.length === 0) return;
       const vectors = await embed(missing, config.apiKey, config.embedModel);
-      await upsertVectors(
-        pineconeConfig,
+      await upsertEmbeddings(
         namespace,
-        missing.map((name, index) => ({
-          id: capSlug(name),
-          values: vectors[index],
-          metadata: { name },
-        })),
+        missing.map((name, index) => ({ name, vector: vectors[index] })),
       );
     })();
     ensured.catch(() => ensuredVocabularyCache.delete(cacheKey));

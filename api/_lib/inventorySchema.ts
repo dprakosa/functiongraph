@@ -5,10 +5,12 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uuid,
   varchar,
+  vector,
 } from "drizzle-orm/pg-core";
 import type {
   Capability,
@@ -59,3 +61,33 @@ export const inventoryItems = pgTable(
 );
 
 export type InventoryItemRow = typeof inventoryItems.$inferSelect;
+
+/**
+ * ALG-2 embedding cache (§14 decision log, 2026-07-12): vocabulary vectors
+ * persist here so cold starts reuse them instead of re-embedding. Rows are
+ * content-addressed by (model_revision, name) — per-user scoping happens at
+ * query time by filtering to the active vocabulary, never in storage.
+ */
+export const capabilityEmbeddings = pgTable(
+  "capability_embeddings",
+  {
+    // vectorNamespace(model, revision): vectors from different embedding
+    // deployments are never comparable and must never mix (ALG-2).
+    modelRevision: text("model_revision").notNull(),
+    name: text("name").notNull(),
+    // Dimensions match the pinned OpenAI text-embedding-3-small output; a
+    // model change requires regenerating every stored vector per ALG-2.
+    embedding: vector("embedding", { dimensions: 1536 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "capability_embeddings_pk",
+      columns: [table.modelRevision, table.name],
+    }),
+  ],
+);
+
+export type CapabilityEmbeddingRow = typeof capabilityEmbeddings.$inferSelect;

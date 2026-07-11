@@ -21,7 +21,10 @@ disabled because Clerk remains the identity authority.
 ## Schema and migrations
 
 The Drizzle schema lives in `api/_lib/inventorySchema.ts`; committed SQL lives
-under `drizzle/`. After an intentional schema edit:
+under `drizzle/`. Besides `inventory_items` it defines the
+`capability_embeddings` pgvector table — the ALG-2 embedding cache (§14,
+2026-07-12) — whose migration enables the `vector` extension. After an
+intentional schema edit:
 
 ```sh
 npm run db:generate

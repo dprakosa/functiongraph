@@ -48,7 +48,12 @@ await migrate(drizzle(testUrl), { migrationsFolder: "drizzle" });
 console.log(`Migrated isolated database ${TEST_DATABASE_NAME}; running integration tests.`);
 execFileSync(
   "npm",
-  ["test", "--", "api/_lib/inventoryStore.integration.test.ts"],
+  [
+    "test",
+    "--",
+    "api/_lib/inventoryStore.integration.test.ts",
+    "api/_lib/embeddingCache.integration.test.ts",
+  ],
   {
     stdio: "inherit",
     env: {

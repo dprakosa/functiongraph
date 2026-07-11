@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import demoCacheFile from "../../src/data/demoCache.json";
 import inventoryFile from "../../src/data/inventory.json";
-import { capSlug } from "../../src/lib/text";
 import type { Capability, Item } from "../../src/lib/types";
 import {
   decomposeLive,
@@ -11,7 +10,72 @@ import {
   readLiveConfig,
   SNAP_THRESHOLD,
 } from "./live";
-import { resetPineconeHostCacheForTests } from "./pinecone";
+
+/**
+ * In-memory stand-in for the pgvector embedding cache: fetch reports what is
+ * stored, upsert stores first-write-wins, and query scores the same 3-dim
+ * test vectors with cosine restricted to the caller's vocabulary — mirroring
+ * the real vocabulary-filtered SQL. readVectorStoreConfig stays real, so the
+ * cache is off unless a suite stubs DATABASE_URL.
+ */
+const fakeCache = {
+  store: new Map<string, Map<string, number[]>>(),
+  down: false,
+  queryCalls: [] as { vocabularyNames: string[] }[],
+  upsertCalls: 0,
+  reset() {
+    this.store.clear();
+    this.down = false;
+    this.queryCalls = [];
+    this.upsertCalls = 0;
+  },
+  namespace(namespace: string) {
+    let rows = this.store.get(namespace);
+    if (!rows) {
+      rows = new Map();
+      this.store.set(namespace, rows);
+    }
+    return rows;
+  },
+};
+
+vi.mock("./embeddingCache", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./embeddingCache")>();
+  return {
+    ...actual,
+    fetchExistingNames: async (namespace: string, names: string[]) => {
+      if (fakeCache.down) throw new Error("embedding cache down");
+      const rows = fakeCache.namespace(namespace);
+      return new Set(names.filter((name) => rows.has(name)));
+    },
+    upsertEmbeddings: async (
+      namespace: string,
+      embeddings: { name: string; vector: number[] }[],
+    ) => {
+      if (fakeCache.down) throw new Error("embedding cache down");
+      fakeCache.upsertCalls += 1;
+      const rows = fakeCache.namespace(namespace);
+      embeddings.forEach(({ name, vector }) => {
+        if (!rows.has(name)) rows.set(name, vector);
+      });
+    },
+    queryNearest: async (
+      namespace: string,
+      vocabularyNames: string[],
+      vector: number[],
+    ) => {
+      if (fakeCache.down) throw new Error("embedding cache down");
+      fakeCache.queryCalls.push({ vocabularyNames });
+      let best: { name: string; score: number } | null = null;
+      fakeCache.namespace(namespace).forEach((values, name) => {
+        if (!vocabularyNames.includes(name)) return;
+        const score = cosine3(vector, values);
+        if (!best || score > best.score) best = { name, score };
+      });
+      return best;
+    },
+  };
+});
 
 interface MockDecomposition {
   name: string | null;
@@ -367,8 +431,6 @@ describe("decomposeLive canonicalization (API-4, ALG-2)", () => {
   });
 });
 
-const PINECONE_HOST = "vocab-index-abc123.svc.test.pinecone.io";
-
 function cosine3(a: number[], b: number[]): number {
   let dot = 0;
   let normA = 0;
@@ -381,81 +443,7 @@ function cosine3(a: number[], b: number[]): number {
   return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-/**
- * OpenAI mock plus an in-memory stand-in for the Pinecone index: fetch
- * reports what is stored, upsert stores, and query scores the same 3-dim
- * test vectors with cosine — mirroring a real cosine-metric index.
- */
-function installPineconeBackedMock(
-  decomposition: MockDecomposition,
-  extraVectors: Record<string, number[]> = {},
-  options: { seededNames?: string[]; controlPlaneDown?: boolean } = {},
-) {
-  const vectors = { ...vocabularyVectors, ...extraVectors };
-  const index = new Map<string, { name: string; values: number[] }>();
-  (options.seededNames ?? []).forEach((name) => {
-    index.set(capSlug(name), { name, values: vectors[name] });
-  });
-
-  const fetchMock = vi.fn(
-    async (url: string | URL, init?: RequestInit): Promise<Response> => {
-      const target = String(url);
-      if (target.endsWith("/chat/completions")) {
-        return mockResponse({
-          choices: [{ message: { content: JSON.stringify(decomposition) } }],
-        });
-      }
-      if (target.endsWith("/embeddings")) {
-        const payload = JSON.parse(String(init?.body)) as { input?: string[] };
-        return mockResponse({
-          data: (payload.input ?? []).map((text, i) => {
-            const embedding = vectors[text];
-            if (!embedding) throw new Error(`missing test embedding for ${text}`);
-            return { index: i, embedding };
-          }),
-        });
-      }
-      if (target === "https://api.pinecone.io/indexes/vocab-index") {
-        if (options.controlPlaneDown) {
-          return { ok: false, status: 500, json: async () => ({}) } as Response;
-        }
-        return mockResponse({ name: "vocab-index", host: PINECONE_HOST });
-      }
-      if (target.startsWith(`https://${PINECONE_HOST}/vectors/fetch`)) {
-        const requested = new URL(target).searchParams.getAll("ids");
-        return mockResponse({
-          vectors: Object.fromEntries(
-            requested.filter((id) => index.has(id)).map((id) => [id, { id }]),
-          ),
-        });
-      }
-      if (target === `https://${PINECONE_HOST}/vectors/upsert`) {
-        const payload = JSON.parse(String(init?.body)) as {
-          vectors: { id: string; values: number[]; metadata: { name: string } }[];
-        };
-        payload.vectors.forEach((vector) =>
-          index.set(vector.id, { name: vector.metadata.name, values: vector.values }),
-        );
-        return mockResponse({});
-      }
-      if (target === `https://${PINECONE_HOST}/query`) {
-        const payload = JSON.parse(String(init?.body)) as { vector: number[] };
-        let best: { id: string; score: number; metadata: { name: string } } | null =
-          null;
-        index.forEach(({ name, values }, id) => {
-          const score = cosine3(payload.vector, values);
-          if (!best || score > best.score) best = { id, score, metadata: { name } };
-        });
-        return mockResponse({ matches: best ? [best] : [] });
-      }
-      throw new Error(`unexpected network request: ${target}`);
-    },
-  );
-  vi.stubGlobal("fetch", fetchMock);
-  return { fetchMock, index };
-}
-
-describe("pinecone-backed canonicalization (ALG-2, §14 decision log)", () => {
+describe("cache-backed canonicalization (ALG-2, §14 decision log)", () => {
   let revision = 0;
 
   const decomposition: MockDecomposition = {
@@ -471,21 +459,26 @@ describe("pinecone-backed canonicalization (ALG-2, §14 decision log)", () => {
   const atThreshold = [Math.sqrt(1 - SNAP_THRESHOLD ** 2), 0, SNAP_THRESHOLD];
   const belowThreshold = [Math.sqrt(1 - 0.829 ** 2), 0, 0.829];
 
+  const namespace = () => `text-embedding-3-small@cache-test-${revision}`;
+
+  function seedVocabulary(names: string[]) {
+    names.forEach((name) => {
+      fakeCache.namespace(namespace()).set(name, vocabularyVectors[name]);
+    });
+  }
+
   beforeEach(() => {
     revision += 1;
-    resetPineconeHostCacheForTests();
+    fakeCache.reset();
     vi.stubEnv("OPENAI_API_KEY", "test-key");
     vi.stubEnv("OPENAI_MODEL", "gpt-4.1-mini-2025-04-14");
     vi.stubEnv("OPENAI_EMBED_MODEL", "text-embedding-3-small");
-    vi.stubEnv("OPENAI_EMBED_REVISION", `pinecone-test-${revision}`);
-    vi.stubEnv("PINECONE_API_KEY", "pinecone-test-key");
-    vi.stubEnv("PINECONE_INDEX", "vocab-index");
+    vi.stubEnv("OPENAI_EMBED_REVISION", `cache-test-${revision}`);
+    vi.stubEnv("DATABASE_URL", "postgresql://cache-test@localhost/cache-test");
   });
 
-  it("persists vocabulary vectors and snaps through the index", async () => {
-    const { fetchMock, index } = installPineconeBackedMock(decomposition, {
-      "warms cooked meals": atThreshold,
-    });
+  it("persists vocabulary vectors and snaps through the cache", async () => {
+    installOpenAiMock(decomposition, { "warms cooked meals": atThreshold });
 
     const result = await decomposeLive("candidate oven", liveItems);
 
@@ -494,25 +487,42 @@ describe("pinecone-backed canonicalization (ALG-2, §14 decision log)", () => {
       tier: "secondary",
     });
     // The empty namespace was seeded with all three vocabulary vectors…
-    expect([...index.keys()].sort()).toEqual([
-      "bakes-food",
-      "reheats-leftovers",
-      "toasts-bread",
+    expect([...fakeCache.namespace(namespace()).keys()].sort()).toEqual([
+      "bakes food",
+      "reheats leftovers",
+      "toasts bread",
     ]);
     // …and the snap itself went through a query, not an in-process loop.
-    expect(
-      fetchMock.mock.calls.some(([url]) =>
-        String(url).endsWith(`${PINECONE_HOST}/query`),
-      ),
-    ).toBe(true);
+    expect(fakeCache.queryCalls).toHaveLength(1);
+  });
+
+  it("scopes every cache query to the active vocabulary", async () => {
+    installOpenAiMock(decomposition, { "warms cooked meals": atThreshold });
+    // A different inventory's cached vector must be unreachable even when it
+    // is a perfect match for the unmatched capability.
+    fakeCache
+      .namespace(namespace())
+      .set("warms plated dinners", atThreshold.slice());
+
+    const result = await decomposeLive("candidate oven", liveItems);
+
+    expect(fakeCache.queryCalls).toHaveLength(1);
+    expect(fakeCache.queryCalls[0].vocabularyNames.sort()).toEqual([
+      "bakes food",
+      "reheats leftovers",
+      "toasts bread",
+    ]);
+    expect(result.capabilities[2]).toEqual({
+      name: "reheats leftovers",
+      tier: "secondary",
+    });
   });
 
   it("reuses persisted vectors instead of re-embedding the vocabulary", async () => {
-    const { fetchMock } = installPineconeBackedMock(
-      decomposition,
-      { "warms cooked meals": atThreshold },
-      { seededNames: ["bakes food", "toasts bread", "reheats leftovers"] },
-    );
+    const fetchMock = installOpenAiMock(decomposition, {
+      "warms cooked meals": atThreshold,
+    });
+    seedVocabulary(["bakes food", "toasts bread", "reheats leftovers"]);
 
     const result = await decomposeLive("candidate oven", liveItems);
 
@@ -527,15 +537,11 @@ describe("pinecone-backed canonicalization (ALG-2, §14 decision log)", () => {
     expect(JSON.parse(String(embeddingCalls[0][1]?.body)).input).toEqual([
       "warms cooked meals",
     ]);
-    expect(
-      fetchMock.mock.calls.some(([url]) =>
-        String(url).endsWith("/vectors/upsert"),
-      ),
-    ).toBe(false);
+    expect(fakeCache.upsertCalls).toBe(0);
   });
 
-  it("keeps a capability new when the index score is below 0.83", async () => {
-    installPineconeBackedMock(decomposition, {
+  it("keeps a capability new when the cache score is below 0.83", async () => {
+    installOpenAiMock(decomposition, {
       "warms cooked meals": belowThreshold,
     });
 
@@ -549,11 +555,8 @@ describe("pinecone-backed canonicalization (ALG-2, §14 decision log)", () => {
 
   it("falls back to in-process snapping when the vector store is down", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    installPineconeBackedMock(
-      decomposition,
-      { "warms cooked meals": atThreshold },
-      { controlPlaneDown: true },
-    );
+    installOpenAiMock(decomposition, { "warms cooked meals": atThreshold });
+    fakeCache.down = true;
 
     const result = await decomposeLive("candidate oven", liveItems);
 
@@ -563,14 +566,5 @@ describe("pinecone-backed canonicalization (ALG-2, §14 decision log)", () => {
     });
     expect(warn).toHaveBeenCalledOnce();
     warn.mockRestore();
-  });
-
-  it("rejects a configured index with a missing key loudly", async () => {
-    vi.stubEnv("PINECONE_API_KEY", "");
-    installOpenAiMock(decomposition);
-
-    await expect(decomposeLive("candidate oven", liveItems)).rejects.toThrow(
-      LiveUnavailableError,
-    );
   });
 });

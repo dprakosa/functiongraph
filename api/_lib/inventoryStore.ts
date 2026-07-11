@@ -1,9 +1,9 @@
 import { and, asc, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/neon-http";
 import type {
   ConfirmedInventoryItemInput,
   OwnedInventoryItem,
 } from "../../src/lib/types.js";
+import { database } from "./db.js";
 import {
   inventoryItems,
   type InventoryItemRow,
@@ -15,23 +15,6 @@ export class InventoryStoreUnavailableError extends Error {
     super("inventory store unavailable");
     this.name = "InventoryStoreUnavailableError";
   }
-}
-
-let cachedUrl: string | null = null;
-let cachedDatabase: ReturnType<typeof createDatabase> | null = null;
-
-function createDatabase(url: string) {
-  return drizzle(url, { schema: { inventoryItems } });
-}
-
-function database() {
-  const url = process.env.DATABASE_URL?.trim();
-  if (!url) throw new InventoryStoreUnavailableError();
-  if (!cachedDatabase || cachedUrl !== url) {
-    cachedUrl = url;
-    cachedDatabase = createDatabase(url);
-  }
-  return cachedDatabase;
 }
 
 function toOwnedInventoryItem(row: InventoryItemRow): OwnedInventoryItem {
