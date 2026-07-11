@@ -11,6 +11,7 @@ export default async function evaluate(
   request: VercelRequest,
   response: VercelResponse,
 ) {
+  response.setHeader("Cache-Control", "private, no-store");
   if (request.method !== "POST") {
     response
       .status(405)
