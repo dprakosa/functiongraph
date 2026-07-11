@@ -19,10 +19,11 @@ normative values may only change with human sign-off and a PDD decision-log
 entry. The app uses React, TypeScript, D3, SVG, versioned JSON data, and two
 Vercel-compatible backend endpoints. There is no database or persistence.
 
-Visual implementation follows [DESIGN.md](./DESIGN.md), which combines a
-Linear-inspired bright, compact interface discipline with FunctionGraph's
-graph-first layout and fixed coral/green semantic colour law. `PDD.md` remains
-higher precedence whenever the two documents differ.
+Visual implementation follows [DESIGN.md](./DESIGN.md), which applies the
+Atlassian Design System (tokens via `@atlaskit/tokens`, light theme) to
+FunctionGraph's graph-first layout while keeping the fixed coral/green semantic
+colour law. `PDD.md` remains higher precedence whenever the two documents
+differ.
 
 ## Run locally
 
