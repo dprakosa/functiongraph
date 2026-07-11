@@ -89,6 +89,11 @@ the build migrates that branch. Verify a deployment without printing a full
 connection string: compare only its database host/branch identifier with the
 development or production host.
 
+Keep the Vercel project connected to this GitHub repository. Neon preview
+branching is attached to Git-created preview deployments; an ad-hoc CLI preview
+is useful for a build smoke test but can inherit the general Preview database
+URL and does not prove branch isolation.
+
 ## Production and rollback
 
 Production deployment applies only forward, committed migrations. Prefer
