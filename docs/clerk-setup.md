@@ -72,22 +72,31 @@ issue, terminal transcript, or browser bundle.
 
 For this repository, perform the first Production cutover in this order:
 
-1. In the Vercel Production environment, configure
-   `VITE_CLERK_PUBLISHABLE_KEY`, `CLERK_PUBLISHABLE_KEY`, and
-   `CLERK_SECRET_KEY` from the same Clerk production instance.
-2. Set `CLERK_AUTHORIZED_PARTIES` to the exact canonical origin,
-   `https://functiongraph.vercel.app`. Add a custom-domain origin only after
-   that domain is assigned to the project.
-3. Configure `OPENAI_API_KEY` together with the pinned `OPENAI_MODEL`,
+1. Activate the Clerk production instance for `dprakosa.com` and publish every
+   DNS record Clerk requires through the domain's authoritative DNS provider.
+   Clerk production instances cannot use a `*.vercel.app` domain.
+2. Connect the Vercel Marketplace Clerk resource to the Production environment.
+   Confirm by prefix only that the managed Production values are `pk_live` and
+   `sk_live`; `pk_test` or `sk_test` means the development instance is still
+   connected.
+3. The integration manages `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and
+   `CLERK_SECRET_KEY`. Copy the same production publishable key into this Vite
+   app's `VITE_CLERK_PUBLISHABLE_KEY` and server-only
+   `CLERK_PUBLISHABLE_KEY`, then set `CLERK_AUTHORIZED_PARTIES` to the exact
+   canonical origin `https://dprakosa.com`.
+4. Configure `OPENAI_API_KEY` together with the pinned `OPENAI_MODEL`,
    `OPENAI_VISION_MODEL`, `OPENAI_EMBED_MODEL`, and
    `OPENAI_EMBED_REVISION` values from [`.env.example`](../.env.example).
-4. In Clerk, create a Production webhook subscribed only to `user.deleted` at
-   `https://functiongraph.vercel.app/api/webhooks/clerk`. Store its signing
-   secret as the Vercel Production `CLERK_WEBHOOK_SIGNING_SECRET` variable.
-5. In Vercel Project Settings → Environments → Production → Branch Tracking,
+5. If automatic account-deletion cleanup is enabled, create a Production Clerk
+   webhook subscribed only to `user.deleted` at
+   `https://dprakosa.com/api/webhooks/clerk` and store its signing secret as
+   the Vercel Production `CLERK_WEBHOOK_SIGNING_SECRET` variable. The project
+   owner explicitly waived this optional secondary cleanup for the initial
+   Production release; the API remains available for a later rollout.
+6. In Vercel Project Settings → Environments → Production → Branch Tracking,
    select `main`. Vercel currently exposes this setting in the dashboard, not
    through the supported project CLI commands.
-6. Trigger a fresh Production deployment from `main`. The committed build
+7. Trigger a fresh Production deployment from `main`. The committed build
    command applies the forward-only Drizzle migrations, including pgvector,
    before building the application.
 
@@ -100,16 +109,16 @@ After deployment, verify all of the following without printing any key, token,
 connection string, image, or provider response:
 
 - the deployment is `READY`, targets Production, and resolves at
-  `https://functiongraph.vercel.app`;
+  `https://dprakosa.com`;
 - signed-out `POST /api/evaluate`, `GET /api/inventory/items`, and
   `POST /api/inventory/scan` requests return sanitized JSON `401` responses;
 - a signed-in browser can run the cached evaluation probe below and load its
   own inventory without a `503`;
 - the browser bundle contains no Clerk secret, authorized-party list, OpenAI
   key, Neon URL, or webhook secret;
-- a disposable Clerk production user deletion delivers a successful
-  `user.deleted` webhook, and Vercel runtime logs contain no payload or secret;
-  and
+- when the optional deletion webhook is enabled, a disposable Clerk production
+  user deletion delivers successfully and Vercel runtime logs contain no
+  payload or secret; and
 - Vercel runtime errors show no migration, pgvector, Clerk verification, or
   provider-configuration failures.
 
