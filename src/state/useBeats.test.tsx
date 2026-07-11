@@ -68,6 +68,32 @@ describe("useBeats", () => {
     expect(dispatch).not.toHaveBeenCalledWith({ type: "DIVE_STARTED" });
   });
 
+  it("completes the camera beat before revealing evidence and settling", () => {
+    const dispatch = vi.fn<(action: AppAction) => void>();
+    const route = { domain: "kitchen", matchesInRoom: 1, totalCount: 2 };
+    const cameraState = stateFor("settling", {
+      route,
+      view: { level: "room", domain: "kitchen" },
+      evidenceVisible: false,
+    });
+    const { rerender } = renderHook(
+      ({ state }) => useBeats(state, dispatch, false),
+      { initialProps: { state: cameraState } },
+    );
+
+    act(() => vi.advanceTimersByTime(TIMINGS.cameraMs - 1));
+    expect(dispatch).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
+    expect(dispatch).toHaveBeenCalledWith({ type: "EVIDENCE_REVEALED" });
+
+    dispatch.mockClear();
+    rerender({ state: { ...cameraState, evidenceVisible: true } });
+    act(() => vi.advanceTimersByTime(TIMINGS.settleMs - 1));
+    expect(dispatch).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
+    expect(dispatch).toHaveBeenCalledWith({ type: "VERDICT_SHOWN" });
+  });
+
   it("ends a row pulse no later than two seconds", () => {
     const dispatch = vi.fn<(action: AppAction) => void>();
     const state = stateFor("verdict", { pulsingSlug: "bakes-food" });

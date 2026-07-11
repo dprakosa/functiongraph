@@ -229,6 +229,7 @@ export function GraphCanvas({
   const scanSelRef = useRef<d3.Selection<SVGPathElement, ForceEdge, SVGGElement, unknown> | null>(null);
   const positionsRef = useRef(new Map<string, { x: number; y: number }>());
   const signatureRef = useRef("");
+  const lastReducedMotionRef = useRef(reducedMotion);
   const sizeRef = useRef({ width: 900, height: 640 });
   const fitPendingRef = useRef(true);
   const initialFitDoneRef = useRef(false);
@@ -413,7 +414,7 @@ export function GraphCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function fitView(duration: number) {
+  function fitView(duration: number, maxScale = 1.5) {
     const svg = svgRef.current;
     const zoom = zoomRef.current;
     const nodes = nodesRef.current;
@@ -425,7 +426,10 @@ export function GraphCanvas({
     const maxY = Math.max(...nodes.map((n) => (n.y ?? 0) + n.collideRadius)) + 30;
     const scale = Math.max(
       0.35,
-      Math.min(1.5, 0.92 / Math.max((maxX - minX) / width, (maxY - minY) / height)),
+      Math.min(
+        maxScale,
+        0.92 / Math.max((maxX - minX) / width, (maxY - minY) / height),
+      ),
     );
     const transform = d3.zoomIdentity
       .translate(width / 2, height / 2)
@@ -443,8 +447,14 @@ export function GraphCanvas({
     const simulation = simRef.current;
     const viewport = viewportRef.current;
     if (!simulation || !viewport) return;
-    if (signature === signatureRef.current) return;
+    const becameReduced = reducedMotion && !lastReducedMotionRef.current;
+    lastReducedMotionRef.current = reducedMotion;
+    if (signature === signatureRef.current && !becameReduced) return;
     signatureRef.current = signature;
+    // Every structural update gets one final, data-derived fit after physics
+    // cools. This keeps newly materialized approval hubs and item minis
+    // inspectable without reacting to cosmetic hover or pulse state.
+    fitPendingRef.current = true;
     const { width, height } = sizeRef.current;
 
     const forceNodes: ForceNode[] = graph.nodes.map((node) => {
@@ -587,7 +597,18 @@ export function GraphCanvas({
 
     const viewChanged = viewKeyRef.current !== viewKey;
     viewKeyRef.current = viewKey;
-    if (viewChanged) fitPendingRef.current = true;
+    if (viewChanged) {
+      // The route toast already announced this move. Begin the camera beat as
+      // soon as room data swaps in; evidence is revealed only after cameraMs.
+      // A conservative room zoom leaves space for nodes to spread as physics
+      // settles, without hardcoding any node position.
+      // Refit once more when physics cools so the final data-derived layout is
+      // fully visible; the first move still completes before evidence enters.
+      fitPendingRef.current = true;
+      renderSimulationFrame();
+      fitView(TIMINGS.cameraMs, viewKey.startsWith("room:") ? 0.85 : 1.5);
+      initialFitDoneRef.current = true;
+    }
 
     if (reducedMotion) {
       // SM-9: settle synchronously — layout without motion.

@@ -58,6 +58,40 @@ function setReducedMotion(matches: boolean) {
   );
 }
 
+function controllableReducedMotion(initial = false) {
+  let matches = initial;
+  const listeners = new Set<(event: MediaQueryListEvent) => void>();
+  vi.spyOn(window, "matchMedia").mockImplementation(
+    (query: string) =>
+      ({
+        get matches() {
+          return matches;
+        },
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(
+          (_type: string, listener: (event: MediaQueryListEvent) => void) =>
+            listeners.add(listener),
+        ),
+        removeEventListener: vi.fn(
+          (_type: string, listener: (event: MediaQueryListEvent) => void) =>
+            listeners.delete(listener),
+        ),
+        dispatchEvent: vi.fn(() => false),
+      }) as MediaQueryList,
+  );
+
+  return {
+    set(next: boolean) {
+      matches = next;
+      const event = { matches: next } as MediaQueryListEvent;
+      listeners.forEach((listener) => listener(event));
+    },
+  };
+}
+
 function latestGraphProps(): GraphCanvasProps {
   const latest = graphMock.props.mock.calls.at(-1);
   if (!latest) throw new Error("GraphCanvas has not rendered");
@@ -184,6 +218,35 @@ describe("FunctionGraph frontend contract", () => {
     expect(screen.queryByRole("button", { name: /Back to rooms/ })).not.toBeInTheDocument();
   });
 
+  it.each([
+    [OVEN_CHIP, "Convection countertop oven", 5],
+    [CABLE_CHIP, "4th USB-C cable", 3],
+    [DRONE_CHIP, "Mini camera drone", 4],
+  ])(
+    "maps every %s verdict row to exactly one ghost edge",
+    async (chip, productName, expectedRows) => {
+      setReducedMotion(true);
+      failedFetch();
+      render(<App />);
+      const user = await chooseExample(chip);
+      await screen.findByRole("heading", { name: productName });
+
+      const rows = screen.getAllByRole("button", {
+        name: /Highlight its graph edge$/,
+      });
+      expect(rows).toHaveLength(expectedRows);
+
+      for (const row of rows) {
+        await user.click(row);
+        const { pulsingSlug, graph } = latestGraphProps();
+        expect(pulsingSlug).toBeTruthy();
+        expect(
+          graph.edges.filter((edge) => edge.id === `ghost->${pulsingSlug}`),
+        ).toHaveLength(1);
+      }
+    },
+  );
+
   it("updates the impact counter when the oven purchase is skipped", async () => {
     setReducedMotion(true);
     failedFetch();
@@ -241,6 +304,95 @@ describe("FunctionGraph frontend contract", () => {
       ),
     ).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("honours reduced motion when the preference changes during a pending evaluation", async () => {
+    const motion = controllableReducedMotion();
+    let resolveFetch!: (response: Response) => void;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveFetch = resolve;
+          }),
+      ),
+    );
+    render(<App />);
+    const user = userEvent.setup();
+
+    await user.type(
+      screen.getByLabelText("What are you considering?"),
+      "A live novelty product",
+    );
+    await user.click(screen.getByRole("button", { name: /Map capabilities/ }));
+
+    act(() => motion.set(true));
+    resolveFetch(
+      new Response(
+        JSON.stringify({
+          name: "Live novelty product",
+          price: null,
+          capabilities: [
+            { name: "captures aerial photos", tier: "primary" },
+            { name: "records aerial video", tier: "primary" },
+            { name: "flies preset routes", tier: "secondary" },
+          ],
+          verdict: {
+            coverage: 0,
+            coveredCount: 0,
+            totalCount: 3,
+            rows: [
+              {
+                capability: "captures aerial photos",
+                capSlug: "captures-aerial-photos",
+                tier: "primary",
+                covered: false,
+                bestCoverer: null,
+                covererCount: 0,
+                weight: 1,
+              },
+              {
+                capability: "records aerial video",
+                capSlug: "records-aerial-video",
+                tier: "primary",
+                covered: false,
+                bestCoverer: null,
+                covererCount: 0,
+                weight: 1,
+              },
+              {
+                capability: "flies preset routes",
+                capSlug: "flies-preset-routes",
+                tier: "secondary",
+                covered: false,
+                bestCoverer: null,
+                covererCount: 0,
+                weight: 0.4,
+              },
+            ],
+            newCapabilities: [
+              "captures aerial photos",
+              "records aerial video",
+              "flies preset routes",
+            ],
+            pricePerNewCapability: null,
+          },
+          altSuggestion: null,
+          cached: false,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Live novelty product" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("graph-canvas")).toHaveAttribute(
+      "data-phase",
+      "verdict",
+    );
+    expect(screen.getByText("3 / 3")).toBeInTheDocument();
   });
 
   it("runs all normal beats in order and holds the route toast for exactly 600 ms", async () => {
@@ -303,10 +455,27 @@ describe("FunctionGraph frontend contract", () => {
       "settling",
     );
     expect(latestGraphProps().viewKey).toBe("room:kitchen");
+    expect(
+      latestGraphProps().graph.edges.some((edge) => edge.id.startsWith("ghost->")),
+    ).toBe(false);
 
-    act(() =>
-      vi.advanceTimersByTime(TIMINGS.cameraMs + TIMINGS.settleMs - 1),
+    act(() => vi.advanceTimersByTime(TIMINGS.cameraMs - 1));
+    expect(screen.getByTestId("graph-canvas")).toHaveAttribute(
+      "data-phase",
+      "settling",
     );
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.getByTestId("graph-canvas")).toHaveAttribute(
+      "data-phase",
+      "settling",
+    );
+    expect(
+      latestGraphProps().graph.edges.filter((edge) =>
+        edge.id.startsWith("ghost->"),
+      ),
+    ).toHaveLength(5);
+
+    act(() => vi.advanceTimersByTime(TIMINGS.settleMs - 1));
     expect(screen.getByTestId("graph-canvas")).toHaveAttribute(
       "data-phase",
       "settling",

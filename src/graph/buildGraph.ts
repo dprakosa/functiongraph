@@ -69,6 +69,8 @@ interface BuildArgs {
   result: EvaluateResult | null;
   route: RouteResult | null;
   expandedItemId: string | null;
+  /** Settling sub-beat; defaults true for direct/test callers. */
+  evidenceVisible?: boolean;
 }
 
 const roomId = (label: string) => `room:${label}`;
@@ -106,6 +108,7 @@ export function buildGraph({
   result,
   route,
   expandedItemId,
+  evidenceVisible = true,
 }: BuildArgs): GraphData {
   const vocabulary = deriveVocabulary(items);
   const hubs = deriveHubs(items);
@@ -121,7 +124,8 @@ export function buildGraph({
 
   const ghostActive = phase !== "resting" && result != null;
   const ghostEdgesVisible =
-    ghostActive && (phase === "settling" || phase === "verdict");
+    ghostActive &&
+    (phase === "verdict" || (phase === "settling" && evidenceVisible));
 
   if (view.level === "home") {
     domains.forEach((domain) => {

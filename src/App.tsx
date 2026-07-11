@@ -8,6 +8,7 @@ import {
 } from "react";
 import inventoryFile from "./data/inventory.json";
 import { GraphCanvas } from "./components/GraphCanvas";
+import { ProductCommandBar } from "./components/ProductCommandBar";
 import {
   buildGraph,
   type GraphNodeDatum,
@@ -22,11 +23,7 @@ import {
   type AppAction,
   type AppState,
 } from "./state/appReducer";
-import {
-  evaluate,
-  EvaluateFailure,
-  TRY_THESE_CHIPS,
-} from "./state/evaluateClient";
+import { evaluate, EvaluateFailure } from "./state/evaluateClient";
 import { useBeats } from "./state/useBeats";
 
 const inventory = inventoryFile as InventoryFile;
@@ -129,7 +126,10 @@ function VerdictPanel({ state, dispatch }: VerdictPanelProps) {
   };
 
   return (
-    <aside className="verdict-panel" aria-labelledby="verdict-title">
+    <aside
+      className={`verdict-panel${isApproval ? " verdict-panel--approval" : ""}`}
+      aria-labelledby="verdict-title"
+    >
       <div className="verdict-panel__header">
         <p className="eyebrow">Verdict</p>
         <div className="verdict-panel__titleline">
@@ -233,6 +233,8 @@ export default function App() {
   const [draft, setDraft] = useState("");
   const requestSequence = useRef(0);
   const reducedMotion = useReducedMotion();
+  const reducedMotionRef = useRef(reducedMotion);
+  reducedMotionRef.current = reducedMotion;
 
   useBeats(state, dispatch, reducedMotion);
 
@@ -250,6 +252,7 @@ export default function App() {
         result: state.result,
         route: state.route,
         expandedItemId: state.expandedItemId,
+        evidenceVisible: state.evidenceVisible,
       }),
     [
       state.view,
@@ -257,6 +260,7 @@ export default function App() {
       state.result,
       state.route,
       state.expandedItemId,
+      state.evidenceVisible,
     ],
   );
 
@@ -280,7 +284,10 @@ export default function App() {
         type: "EVALUATE_SUCCESS",
         result,
         route: routeVerdict(result.verdict, inventory.items),
-        reducedMotion,
+        // Read the current preference after the async evaluation returns. A
+        // preference change while a request is pending must not strand the
+        // result in the extracting phase (SM-9).
+        reducedMotion: reducedMotionRef.current,
       });
     } catch (error) {
       if (sequence !== requestSequence.current) return;
@@ -332,7 +339,7 @@ export default function App() {
           <span>FunctionGraph</span>
         </a>
         <p className="app-header__promise">
-          See what a purchase adds before you buy it.
+          Capability-level purchase decisions, mapped live.
         </p>
         <output className="impact-counter" aria-live="polite">
           <span className="impact-counter__dot" aria-hidden="true" />
@@ -342,57 +349,20 @@ export default function App() {
 
       <section className="intro" id="top" aria-labelledby="intro-title">
         <div className="intro__copy">
-          <p className="eyebrow">Anti-redundancy purchase copilot</p>
-          <h1 id="intro-title">
-            Buy the <em>capability</em>,<br />
-            not the duplicate.
-          </h1>
+          <p className="eyebrow">Purchase evaluation</p>
+          <h1 id="intro-title">Map a product against what you own</h1>
           <p>
-            FunctionGraph compares a product with the capabilities in your
-            inventory, then shows exactly what is covered and what is new.
+            See every covered capability and the genuinely new delta before
+            you decide.
           </p>
         </div>
-
-        <form
-          className="product-form"
+        <ProductCommandBar
+          draft={draft}
+          isEvaluating={isReading}
+          onDraftChange={setDraft}
           onSubmit={submitProduct}
-          aria-busy={isReading}
-        >
-          <label htmlFor="product-text">What are you considering?</label>
-          <div className="product-form__input">
-            <textarea
-              id="product-text"
-              name="text"
-              rows={3}
-              minLength={3}
-              maxLength={1500}
-              required
-              value={draft}
-              disabled={isReading}
-              placeholder="Paste a product name, listing, or short description"
-              onChange={(event) => setDraft(event.target.value)}
-            />
-            <button className="button button--evaluate" type="submit" disabled={isReading}>
-              <span>{isReading ? "Reading product" : "Map capabilities"}</span>
-              <span aria-hidden="true">→</span>
-            </button>
-          </div>
-          <div className="try-these" aria-label="Try these examples">
-            <span>Try these</span>
-            <div>
-              {TRY_THESE_CHIPS.map((chip) => (
-                <button
-                  type="button"
-                  key={chip}
-                  disabled={isReading}
-                  onClick={() => tryExample(chip)}
-                >
-                  {chip}
-                </button>
-              ))}
-            </div>
-          </div>
-        </form>
+          onExample={tryExample}
+        />
       </section>
 
       {state.error && (

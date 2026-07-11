@@ -16,6 +16,11 @@ entry. The app uses React, TypeScript, D3, SVG, versioned JSON data, and a
 single Vercel-compatible evaluation endpoint. There is no database or
 persistence.
 
+Visual implementation follows [DESIGN.md](./DESIGN.md), which combines a
+Linear-inspired dark, compact interface discipline with FunctionGraph's
+graph-first layout and fixed coral/green semantic colour law. `PDD.md` remains
+higher precedence whenever the two documents differ.
+
 ## Run locally
 
 ```bash
@@ -110,6 +115,10 @@ continue to work if the live service is unavailable.
 
 ## Repository map
 
+- `DESIGN.md` — authoritative visual tokens, component treatments, motion,
+  responsive, and accessibility rules.
+- `src/components/ProductCommandBar.tsx` — cache-aligned product entry and
+  offline demo chips.
 - `src/App.tsx` — reducer-owned product flow and verdict UI.
 - `src/components/GraphCanvas.tsx` — force-directed SVG renderer.
 - `src/graph/buildGraph.ts` — graph data derived from inventory and verdicts.
