@@ -103,6 +103,13 @@ Production deployment applies only forward, committed migrations. Prefer
 expand/contract changes: add compatible columns or tables first, deploy code
 that can use both shapes, and remove obsolete schema in a later release.
 
+Vercel Production branch tracking must point to `main`; a deployment whose
+target is empty is a Preview even when its Git ref is `main`. Build Production
+with the Production Neon variables rather than promoting a Git Preview, because
+Preview may be attached to an isolated Neon branch. Follow the ordered Clerk,
+OpenAI, webhook, branch-tracking, deployment, and verification checklist in
+[Clerk setup](./clerk-setup.md#production-backend-rollout).
+
 Before a destructive migration, create a Neon restore point or branch. If an
 application deploy fails, roll the application back only when the prior code is
 compatible with the new schema. For a data/schema incident, restore or branch
