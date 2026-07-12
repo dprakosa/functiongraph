@@ -16,7 +16,7 @@ export function ProductFrame() {
           <i className="h-2.5 w-2.5 rounded-full bg-hairline" />
         </span>
         <span className="mx-auto rounded-chip bg-white px-6 py-1 text-[10px] text-faint">
-          functiongraph.app/graph
+          subgraph.works/graph
         </span>
       </div>
 
@@ -127,7 +127,7 @@ export function ProductFrame() {
             <li className="flex items-center gap-2 rounded-control border border-new/20 bg-new-soft/60 px-2 py-1.5">
               <span className="text-new" aria-hidden="true">✦</span>
               <span className="flex-1 text-[11.5px] font-medium text-ink">air-crisps food</span>
-              <span className="text-[10px] font-medium text-new-text">not owned — new</span>
+              <span className="text-[10px] font-medium text-new-text">not in your inventory</span>
             </li>
           </ul>
           <div className="grid grid-cols-2 gap-1.5">

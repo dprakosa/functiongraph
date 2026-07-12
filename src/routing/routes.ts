@@ -18,16 +18,16 @@ export function routeName(pathname: string): AppRoute {
 export function titleForRoute(route: AppRoute): string {
   switch (route) {
     case "landing":
-      return "FunctionGraph — See what a purchase adds";
+      return "Subgraph — See what a purchase adds";
     case "graph":
-      return "Evaluate a purchase — FunctionGraph";
+      return "Evaluate a purchase — Subgraph";
     case "inventory":
-      return "Your inventory — FunctionGraph";
+      return "Your inventory — Subgraph";
     case "history":
-      return "Decision history — FunctionGraph";
+      return "Decision history — Subgraph";
     case "settings":
-      return "Settings — FunctionGraph";
+      return "Settings — Subgraph";
     case "not-found":
-      return "Page not found — FunctionGraph";
+      return "Page not found — Subgraph";
   }
 }

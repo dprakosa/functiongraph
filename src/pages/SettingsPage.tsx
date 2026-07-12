@@ -108,7 +108,7 @@ export function SettingsPage() {
         <Section title="About">
           <div className="grid gap-1 text-[13px] text-body">
             <p className="m-0">
-              <strong className="font-semibold text-ink">FunctionGraph</strong> —
+              <strong className="font-semibold text-ink">Subgraph</strong> —
               see what a purchase adds, not what it repeats.
             </p>
             <p className="m-0 text-xs text-muted">

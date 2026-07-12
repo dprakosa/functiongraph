@@ -23,12 +23,12 @@ function rect(
 }
 
 const phaseCases = [
-  ["resting", "Resting"],
-  ["extracting", "Extracting capabilities"],
-  ["scanning", "Scanning inventory"],
-  ["routing", "Routing to evidence"],
-  ["settling", "Settling graph"],
-  ["verdict", "Verdict ready"],
+  ["resting", "Ready"],
+  ["extracting", "Reading product"],
+  ["scanning", "Comparing inventory"],
+  ["routing", "Finding matches"],
+  ["settling", "Preparing result"],
+  ["verdict", "Result ready"],
 ] satisfies ReadonlyArray<readonly [Phase, string]>;
 
 describe("deriveGraphNodeTooltip", () => {

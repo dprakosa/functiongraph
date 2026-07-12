@@ -73,14 +73,14 @@ export function InventoryCanvasState({
           Capture what you own to build this graph
         </h2>
         <p className="mt-3 max-w-lg text-[13px] leading-relaxed text-body">
-          Confirmed items will become rooms, objects, and capabilities here. Demo
-          ownership is never substituted into your personal account.
+          Items you add will become rooms, objects, and connections here. Your
+          inventory stays separate from the starter household.
         </p>
         <a
           className="mt-5 rounded-control bg-accent px-4 py-2 text-[13px] font-semibold text-white no-underline shadow-xs transition-colors hover:bg-accent-hover active:bg-accent-pressed"
-          href="#photo-action-slot"
+          href="/inventory"
         >
-          Find the photo action
+          Open your inventory
         </a>
       </div>
     );

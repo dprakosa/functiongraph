@@ -79,7 +79,7 @@ export function ProductCommandBar({
           type="submit"
           disabled={unavailable}
         >
-          {disabled ? disabledLabel : isEvaluating ? "Evaluating…" : "Map capabilities"}
+          {disabled ? disabledLabel : isEvaluating ? "Checking…" : "Check product"}
         </button>
       </div>
 

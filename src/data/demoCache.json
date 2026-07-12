@@ -1,11 +1,45 @@
 {
   "version": 1,
   "chips": [
-    "Convection countertop oven — $129",
-    "4th USB-C cable — $15",
-    "Mini camera drone — $89"
+    "Air fryer oven — $199",
+    "USB-C hub — $79",
+    "Air purifier — $199"
   ],
   "entries": {
+    "air fryer oven": {
+      "name": "Air fryer oven",
+      "price": 199,
+      "capabilities": [
+        { "name": "bakes food", "tier": "primary" },
+        { "name": "toasts bread", "tier": "primary" },
+        { "name": "reheats leftovers", "tier": "secondary" },
+        { "name": "keeps food warm", "tier": "secondary" },
+        { "name": "cooks food on rotisserie", "tier": "secondary" }
+      ],
+      "altSuggestion": "A countertop rotisserie can add the one cooking method your current appliances do not cover."
+    },
+    "usb c hub": {
+      "name": "USB-C hub",
+      "price": 79,
+      "capabilities": [
+        { "name": "connects external displays", "tier": "primary" },
+        { "name": "adds usb ports", "tier": "primary" },
+        { "name": "charges usb-c devices", "tier": "secondary" },
+        { "name": "transfers data between devices", "tier": "secondary" }
+      ],
+      "altSuggestion": null
+    },
+    "air purifier": {
+      "name": "Air purifier",
+      "price": 199,
+      "capabilities": [
+        { "name": "filters airborne particles", "tier": "primary" },
+        { "name": "removes household odors", "tier": "primary" },
+        { "name": "monitors indoor air", "tier": "secondary" },
+        { "name": "circulates room air", "tier": "secondary" }
+      ],
+      "altSuggestion": null
+    },
     "convection countertop oven": {
       "name": "Convection countertop oven",
       "price": 129,

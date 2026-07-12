@@ -562,11 +562,11 @@ export function GraphCanvas({
       .attr("height", "100%")
       .attr("viewBox", `0 0 ${width} ${height}`)
       .attr("role", "group")
-      .attr("aria-label", "FunctionGraph capability graph");
+      .attr("aria-label", "Subgraph capability graph");
     svg
       .append("desc")
       .text(
-        "Force-directed map of what you own. Gray means covered, emerald means genuinely new.",
+        "Interactive map of what you own. Gray means covered and green means new to you.",
       );
     svg.on("pointerdown.tooltip-dismiss", (event: PointerEvent) => {
       const target = event.target;

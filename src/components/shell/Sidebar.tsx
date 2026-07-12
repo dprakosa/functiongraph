@@ -71,15 +71,15 @@ export function Wordmark({ compact = false }: { compact?: boolean }) {
     <RouteLink
       className="flex items-center gap-2 font-semibold tracking-tight text-ink no-underline"
       to="/"
-      aria-label="FunctionGraph home"
+      aria-label="Subgraph home"
     >
       <span
         aria-hidden="true"
         className="grid h-7 w-7 shrink-0 place-items-center rounded-control bg-accent text-[11px] font-bold text-white"
       >
-        FG
+        S
       </span>
-      {!compact && <span className="text-[15px]">FunctionGraph</span>}
+      {!compact && <span className="text-[15px]">Subgraph</span>}
     </RouteLink>
   );
 }

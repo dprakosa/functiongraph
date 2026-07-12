@@ -29,8 +29,8 @@ describe("normative weights (ALG-3, ALG-4)", () => {
   });
 });
 
-describe("DEM-1 arc (a): heavy overlap — convection oven", () => {
-  const oven = cachedEntry("Convection countertop oven — $129");
+describe("suggested product: heavy overlap — air fryer oven", () => {
+  const oven = cachedEntry("Air fryer oven — $199");
   const verdict = scoreProduct(oven, items);
 
   it("covers 4 of 5", () => {
@@ -38,21 +38,21 @@ describe("DEM-1 arc (a): heavy overlap — convection oven", () => {
     expect(verdict.totalCount).toBe(5);
   });
 
-  it("scores 75 % weighted coverage", () => {
-    expect(Math.round(verdict.coverage * 100)).toBe(75);
+  it("scores 74% weighted coverage", () => {
+    expect(Math.round(verdict.coverage * 100)).toBe(74);
   });
 
-  it("finds exactly one new capability: roasts large meals", () => {
-    expect(verdict.newCapabilities).toEqual(["roasts large meals"]);
+  it("finds exactly one new capability", () => {
+    expect(verdict.newCapabilities).toEqual(["cooks food on rotisserie"]);
   });
 
-  it("prices the delta at $129 per new function (ALG-7)", () => {
-    expect(verdict.pricePerNewCapability).toBe(129);
+  it("retains the internal price-per-new calculation", () => {
+    expect(verdict.pricePerNewCapability).toBe(199);
   });
 
   it("names primary-tier best coverers (ALG-6)", () => {
     const rowByName = new Map(verdict.rows.map((row) => [row.capability, row]));
-    expect(rowByName.get("bakes food")?.bestCoverer).toBe("Toaster oven");
+    expect(rowByName.get("bakes food")?.bestCoverer).toBe("Oven");
     expect(rowByName.get("toasts bread")?.bestCoverer).toBe("Toaster");
     expect(rowByName.get("reheats leftovers")?.bestCoverer).toBe("Microwave");
     expect(rowByName.get("toasts bread")?.covererCount).toBe(4);
@@ -66,8 +66,8 @@ describe("DEM-1 arc (a): heavy overlap — convection oven", () => {
   });
 });
 
-describe("DEM-1 arc (b): total redundancy — 4th USB-C cable", () => {
-  const cable = cachedEntry("4th USB-C cable — $15");
+describe("suggested product: total redundancy — USB-C hub", () => {
+  const cable = cachedEntry("USB-C hub — $79");
   const verdict = scoreProduct(cable, items);
 
   it("is 100 % covered", () => {
@@ -85,8 +85,8 @@ describe("DEM-1 arc (b): total redundancy — 4th USB-C cable", () => {
   });
 });
 
-describe("DEM-1 arc (c): genuinely new — mini drone", () => {
-  const drone = cachedEntry("Mini camera drone — $89");
+describe("suggested product: genuinely new — air purifier", () => {
+  const drone = cachedEntry("Air purifier — $199");
   const verdict = scoreProduct(drone, items);
 
   it("is 0 % covered — the tool says yes (PR-3c)", () => {
@@ -99,7 +99,7 @@ describe("DEM-1 arc (c): genuinely new — mini drone", () => {
   });
 
   it("prices each new function (ALG-7)", () => {
-    expect(verdict.pricePerNewCapability).toBe(Math.round(89 / 4));
+    expect(verdict.pricePerNewCapability).toBe(Math.round(199 / 4));
   });
 });
 
@@ -122,7 +122,7 @@ describe("expanded-room routing", () => {
       "garage",
       [
         { name: "drives screws", tier: "primary" as const },
-        { name: "collects sawdust", tier: "secondary" as const },
+        { name: "removes household dust", tier: "secondary" as const },
         { name: "inflates vehicle tires", tier: "secondary" as const },
       ],
     ],

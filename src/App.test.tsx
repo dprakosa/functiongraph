@@ -67,9 +67,9 @@ vi.mock("./components/GraphCanvas", () => ({
   },
 }));
 
-const OVEN_CHIP = "Convection countertop oven — $129";
-const CABLE_CHIP = "4th USB-C cable — $15";
-const DRONE_CHIP = "Mini camera drone — $89";
+const OVEN_CHIP = "Air fryer oven — $199";
+const CABLE_CHIP = "USB-C hub — $79";
+const DRONE_CHIP = "Air purifier — $199";
 
 function setReducedMotion(matches: boolean) {
   vi.spyOn(window, "matchMedia").mockImplementation(
@@ -139,7 +139,7 @@ async function chooseExample(label: string) {
   return user;
 }
 
-describe("FunctionGraph frontend contract", () => {
+describe("Subgraph frontend contract", () => {
   beforeEach(() => {
     graphMock.props.mockClear();
   });
@@ -168,7 +168,7 @@ describe("FunctionGraph frontend contract", () => {
     const user = await chooseExample(OVEN_CHIP);
 
     expect(
-      await screen.findByRole("heading", { name: "Convection countertop oven" }),
+      await screen.findByRole("heading", { name: "Air fryer oven" }),
     ).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
     expect(screen.getByTestId("graph-canvas")).toHaveAttribute(
@@ -176,18 +176,15 @@ describe("FunctionGraph frontend contract", () => {
       "verdict",
     );
     expect(screen.getByText("5 / 5")).toBeInTheDocument();
-    expect(screen.getByText("$129")).toBeInTheDocument();
+    expect(screen.getByText("$199")).toBeInTheDocument();
     expect(screen.getByText("4 of 5 covered")).toBeInTheDocument();
-    expect(screen.getByText("75 % of this, you already own")).toBeInTheDocument();
+    expect(screen.getByText("74% of its uses are already covered")).toBeInTheDocument();
     expect(
-      screen.getByText("Δ $129 buys 1 new function — $129 each"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/A secondhand roasting pan \(about \$20\) adds large-meal roasting/),
+      screen.getByText(/A countertop rotisserie can add the one cooking method/),
     ).toBeInTheDocument();
 
     const bakesRow = screen.getByRole("button", {
-      name: /bakes food: Toaster oven \+ 1 more\. Highlight its graph edge/,
+      name: /bakes food: Oven \+ 2 more\. Highlight its graph edge/,
     });
     await user.click(bakesRow);
 
@@ -211,15 +208,12 @@ describe("FunctionGraph frontend contract", () => {
     await chooseExample(CABLE_CHIP);
 
     expect(
-      await screen.findByRole("heading", { name: "4th USB-C cable" }),
+      await screen.findByRole("heading", { name: "USB-C hub" }),
     ).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(screen.getByText("3 of 3 covered")).toBeInTheDocument();
-    expect(screen.getByText("100 % of this, you already own")).toBeInTheDocument();
-    expect(
-      screen.getByText("Δ $15 buys nothing you don't already own"),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("Genuinely new — nothing you own does this")).not.toBeInTheDocument();
+    expect(screen.getByText("4 of 4 covered")).toBeInTheDocument();
+    expect(screen.getByText("100% of its uses are already covered")).toBeInTheDocument();
+    expect(screen.queryByText("This would add something new")).not.toBeInTheDocument();
     expect(latestGraphProps().routeDomain).toBe("electronics");
   });
 
@@ -231,26 +225,23 @@ describe("FunctionGraph frontend contract", () => {
     await chooseExample(DRONE_CHIP);
 
     expect(
-      await screen.findByRole("heading", { name: "Mini camera drone" }),
+      await screen.findByRole("heading", { name: "Air purifier" }),
     ).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
     expect(
-      screen.getByText("Genuinely new — nothing you own does this"),
+      screen.getByText("This would add something new"),
     ).toBeInTheDocument();
     expect(screen.getByText("0 of 4 covered")).toBeInTheDocument();
-    expect(screen.getByText("0 % of this, you already own")).toBeInTheDocument();
-    expect(
-      screen.getByText("Δ $89 buys 4 new functions — $22 each"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("0% of its uses are already covered")).toBeInTheDocument();
     expect(latestGraphProps().routeDomain).toBeNull();
     expect(latestGraphProps().viewKey).toBe("home");
     expect(screen.queryByRole("button", { name: /Back to rooms/ })).not.toBeInTheDocument();
   });
 
   it.each([
-    [OVEN_CHIP, "Convection countertop oven", 5],
-    [CABLE_CHIP, "4th USB-C cable", 3],
-    [DRONE_CHIP, "Mini camera drone", 4],
+    [OVEN_CHIP, "Air fryer oven", 5],
+    [CABLE_CHIP, "USB-C hub", 4],
+    [DRONE_CHIP, "Air purifier", 4],
   ])(
     "maps every %s verdict row to exactly one ghost edge",
     async (chip, productName, expectedRows) => {
@@ -292,11 +283,11 @@ describe("FunctionGraph frontend contract", () => {
     ).not.toBeInTheDocument();
 
     const user = await chooseExample(OVEN_CHIP);
-    await screen.findByRole("heading", { name: "Convection countertop oven" });
+    await screen.findByRole("heading", { name: "Air fryer oven" });
     await user.click(screen.getByRole("button", { name: "Skip this purchase" }));
 
     expect(
-      screen.queryByRole("heading", { name: "Convection countertop oven" }),
+      screen.queryByRole("heading", { name: "Air fryer oven" }),
     ).not.toBeInTheDocument();
   });
 
@@ -307,7 +298,7 @@ describe("FunctionGraph frontend contract", () => {
     render(<App />);
 
     const user = await chooseExample(OVEN_CHIP);
-    await screen.findByRole("heading", { name: "Convection countertop oven" });
+    await screen.findByRole("heading", { name: "Air fryer oven" });
     await user.click(screen.getByRole("button", { name: "Skip this purchase" }));
 
     const stored = JSON.parse(
@@ -315,8 +306,8 @@ describe("FunctionGraph frontend contract", () => {
     );
     expect(stored).toHaveLength(1);
     expect(stored[0]).toMatchObject({
-      product: "Convection countertop oven",
-      price: 129,
+      product: "Air fryer oven",
+      price: 199,
       choice: "skipped",
       coveredCount: 4,
       totalCount: 5,
@@ -329,19 +320,19 @@ describe("FunctionGraph frontend contract", () => {
     render(<App />);
 
     const user = await chooseExample(OVEN_CHIP);
-    await screen.findByRole("heading", { name: "Convection countertop oven" });
+    await screen.findByRole("heading", { name: "Air fryer oven" });
     await user.click(screen.getByRole("button", { name: "I still need it" }));
 
-    const reason = screen.getByLabelText("What's it for? teaches the graph");
+    const reason = screen.getByLabelText("Why do you still need it?");
     await user.type(reason, "Cooking for twelve people");
     expect(reason).toHaveValue("Cooking for twelve people");
 
     await user.click(screen.getByRole("button", { name: "Buy anyway" }));
     expect(
-      screen.queryByRole("heading", { name: "Convection countertop oven" }),
+      screen.queryByRole("heading", { name: "Air fryer oven" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByLabelText("What's it for? teaches the graph"),
+      screen.queryByLabelText("Why do you still need it?"),
     ).not.toBeInTheDocument();
   });
 
@@ -355,13 +346,13 @@ describe("FunctionGraph frontend contract", () => {
       screen.getByLabelText("What are you considering?"),
       "Uncached novelty product",
     );
-    await user.click(screen.getByRole("button", { name: /Map capabilities/ }));
+    await user.click(screen.getByRole("button", { name: /Check product/ }));
 
     const alert = await screen.findByRole("alert");
     expect(within(alert).getByText("The evaluation service didn't respond")).toBeInTheDocument();
     expect(
       within(alert).getByText(
-        "check your connection, or tap an example — those never touch the network",
+        "check your connection or choose one of the suggested products",
       ),
     ).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -380,7 +371,7 @@ describe("FunctionGraph frontend contract", () => {
     expect(screen.getByRole("heading", { name: "Loading your capability map" })).toBeVisible();
     expect(screen.getByText("Loading your confirmed items")).toBeVisible();
     expect(screen.queryByTestId("graph-canvas")).not.toBeInTheDocument();
-    expect(screen.queryByText(/36 bundled items/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/starter household/i)).not.toBeInTheDocument();
   });
 
   it("shows the signed-in scan-first empty state and scores offline examples against no owned items", async () => {
@@ -410,7 +401,7 @@ describe("FunctionGraph frontend contract", () => {
     await chooseExample(OVEN_CHIP);
 
     expect(
-      await screen.findByRole("heading", { name: "Convection countertop oven" }),
+      await screen.findByRole("heading", { name: "Air fryer oven" }),
     ).toBeVisible();
     expect(screen.getByText("0 of 5 covered")).toBeVisible();
     expect(screen.getByTestId("graph-canvas")).toBeVisible();
@@ -500,7 +491,7 @@ describe("FunctionGraph frontend contract", () => {
       screen.getByLabelText("What are you considering?"),
       "A live novelty product",
     );
-    await user.click(screen.getByRole("button", { name: /Map capabilities/ }));
+    await user.click(screen.getByRole("button", { name: /Check product/ }));
 
     act(() => motion.set(true));
     resolveFetch(
@@ -661,7 +652,7 @@ describe("FunctionGraph frontend contract", () => {
       "verdict",
     );
     expect(
-      screen.getByRole("heading", { name: "Convection countertop oven" }),
+      screen.getByRole("heading", { name: "Air fryer oven" }),
     ).toBeInTheDocument();
   });
 
@@ -676,7 +667,7 @@ describe("FunctionGraph frontend contract", () => {
     expect(latestGraphProps().viewKey).toBe("room:kitchen");
 
     await user.click(screen.getByRole("button", { name: /Back to rooms/ }));
-    expect(screen.getByRole("heading", { name: "Your capability map" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Your household map" })).toBeInTheDocument();
     expect(latestGraphProps().viewKey).toBe("home");
     expect(screen.queryByRole("button", { name: /Back to rooms/ })).not.toBeInTheDocument();
   });

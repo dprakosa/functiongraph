@@ -40,9 +40,9 @@ describe("evaluation client resolution", () => {
   });
 
   it.each([
-    ["Convection countertop oven — $129", 75],
-    ["4th USB-C cable — $15", 100],
-    ["Mini camera drone — $89", 0],
+    ["Air fryer oven — $199", 74],
+    ["USB-C hub — $79", 100],
+    ["Air purifier — $199", 0],
   ])(
     "resolves the exact demo chip %s without a network request",
     async (text, expectedCoverage) => {

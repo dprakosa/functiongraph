@@ -72,7 +72,7 @@ issue, terminal transcript, or browser bundle.
 
 For this repository, perform the first Production cutover in this order:
 
-1. Activate the Clerk production instance for `dprakosa.com` and publish every
+1. Activate the Clerk production instance for `subgraph.works` and publish every
    DNS record Clerk requires through the domain's authoritative DNS provider.
    Clerk production instances cannot use a `*.vercel.app` domain.
 2. Connect the Vercel Marketplace Clerk resource to the Production environment.
@@ -83,13 +83,15 @@ For this repository, perform the first Production cutover in this order:
    `CLERK_SECRET_KEY`. Copy the same production publishable key into this Vite
    app's `VITE_CLERK_PUBLISHABLE_KEY` and server-only
    `CLERK_PUBLISHABLE_KEY`, then set `CLERK_AUTHORIZED_PARTIES` to the exact
-   canonical origin `https://dprakosa.com`.
+   canonical browser origin `https://www.subgraph.works`. The apex
+   `https://subgraph.works` redirects there and is not the origin that mints
+   the browser session.
 4. Configure `OPENAI_API_KEY` together with the pinned `OPENAI_MODEL`,
    `OPENAI_VISION_MODEL`, `OPENAI_EMBED_MODEL`, and
    `OPENAI_EMBED_REVISION` values from [`.env.example`](../.env.example).
 5. If automatic account-deletion cleanup is enabled, create a Production Clerk
    webhook subscribed only to `user.deleted` at
-   `https://dprakosa.com/api/webhooks/clerk` and store its signing secret as
+   `https://www.subgraph.works/api/webhooks/clerk` and store its signing secret as
    the Vercel Production `CLERK_WEBHOOK_SIGNING_SECRET` variable. The project
    owner explicitly waived this optional secondary cleanup for the initial
    Production release; the API remains available for a later rollout.
@@ -109,7 +111,7 @@ After deployment, verify all of the following without printing any key, token,
 connection string, image, or provider response:
 
 - the deployment is `READY`, targets Production, and resolves at
-  `https://dprakosa.com`;
+  `https://www.subgraph.works`;
 - signed-out `POST /api/evaluate`, `GET /api/inventory/items`, and
   `POST /api/inventory/scan` requests return sanitized JSON `401` responses;
 - a signed-in browser can run the cached evaluation probe below and load its

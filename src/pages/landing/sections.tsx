@@ -6,18 +6,18 @@ import { AmbientGraph } from "./AmbientGraph";
 const steps = [
   {
     number: "01",
-    title: "Capture what you own",
-    body: "Build an account-scoped inventory from the objects already doing useful work in your home.",
+    title: "Add what you own",
+    body: "Keep a simple inventory of the everyday items already doing useful work in your home.",
   },
   {
     number: "02",
-    title: "Map a product",
-    body: "Turn a listing into capabilities, then compare them against the same inventory your graph shows.",
+    title: "Check a product",
+    body: "Paste a product name or listing and Subgraph breaks down what it can actually do.",
   },
   {
     number: "03",
-    title: "Inspect the genuine delta",
-    body: "See what is covered, what is truly new, and the cost of each capability the purchase would add.",
+    title: "See what is new",
+    body: "Review which uses you already have covered and which ones the purchase would add.",
   },
 ];
 
@@ -34,7 +34,7 @@ export function HowItWorks() {
           id="flow-title"
           className="m-0 text-3xl font-semibold tracking-tight text-ink"
         >
-          From ownership to a useful yes or no.
+          From what you own to a clearer decision.
         </h2>
       </div>
       <ol className="m-0 mt-8 grid list-none gap-4 p-0 md:grid-cols-3">
@@ -110,8 +110,8 @@ export function BentoGrid() {
                 <AmbientGraph />
               </div>
             }
-            title="Your home as a living capability graph"
-            body="Rooms, items, and the functions they perform, laid out as a force-directed map. Every verdict row traces to a visible edge — no black-box scores."
+            title="See how your household items connect"
+            body="Rooms, items, and the jobs they do are arranged in one interactive map. Every result links back to the item that already covers it."
           />
           <BentoTile
             visual={
@@ -121,17 +121,17 @@ export function BentoGrid() {
                 <span className="rounded-full border border-new/25 bg-new-soft px-2.5 py-1 text-[11px] font-medium text-new-text">air-crisps food</span>
               </div>
             }
-            title="Capability decomposition"
-            body="A listing becomes a checklist of concrete functions, each weighted by how specific it is."
+            title="A practical feature checklist"
+            body="A product listing becomes a short list of concrete, everyday uses you can compare at a glance."
           />
           <BentoTile
             visual={
               <p className="text-metric m-0 text-3xl font-semibold tracking-tight text-ink" aria-hidden="true">
-                $22 <span className="text-sm font-medium text-muted">per new capability</span>
+                Mostly covered
               </p>
             }
-            title="Delta economics"
-            body="The price divided by what is genuinely new — the honest cost of the functions you don't already own."
+            title="A verdict you can understand"
+            body="See whether a product mostly repeats what you own, adds something useful, or fills a real gap."
           />
           <BentoTile
             visual={
@@ -140,8 +140,8 @@ export function BentoGrid() {
                 roasting pan (about $20) adds large-meal roasting.
               </p>
             }
-            title="Cheaper alternatives"
-            body="When only one function is missing, FunctionGraph suggests acquiring just that delta instead."
+            title="Simpler alternatives"
+            body="When you only need one missing feature, Subgraph can suggest a more direct way to get it."
           />
         </div>
       </div>
@@ -172,11 +172,11 @@ export function PrivacySection() {
           <p className="m-0">
             Photos and review details are discarded after the scan flow. Only
             items you confirm are saved, and they belong to your signed-in
-            account. Guest exploration never creates an inventory.
+            account. Exploring before signing in never creates an inventory.
           </p>
           <p className="m-0">
-            No account required to try it: guest mode ships with a 36-item home
-            and three examples that run fully offline.
+            You can explore with a starter household inventory before creating
+            an account. Sign in when you are ready to use your own items.
           </p>
         </div>
       </div>
@@ -188,7 +188,7 @@ const FAQS = [
   {
     question: "Do you see what I'm shopping for?",
     answer:
-      "The three demo examples run fully offline and never touch the network. A live check sends only the product text you paste, evaluates it against your inventory, and returns the verdict.",
+      "A product check sends only the product text you paste, compares it with your inventory, and returns the result. Your household photos are handled separately and discarded after review.",
   },
   {
     question: "What happens to my photos?",
@@ -198,12 +198,12 @@ const FAQS = [
   {
     question: "Does it work without an account?",
     answer:
-      "Yes. Guest mode includes a bundled 36-item home and three example products, all offline. Sign in when you want to build and keep your own inventory.",
+      "Yes. You can explore with a starter household inventory. Sign in when you want to build and keep your own inventory.",
   },
   {
     question: "What does the coverage score mean?",
     answer:
-      "It is the weighted share of the product's capabilities that something you already own provides. Specific, primary functions weigh more than generic, secondary ones.",
+      "It shows how much of a product's main purpose is already handled by items in your inventory. Open the checklist to see exactly which item covers each use.",
   },
 ];
 
@@ -261,8 +261,8 @@ export function FinalCta() {
           Thinking about buying something?
         </h2>
         <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-body">
-          Map it against what you already own and see the genuine delta in
-          seconds — no account needed.
+          Compare it with what you already own and see what it would really add
+          in seconds.
         </p>
         <RouteLink
           to="/graph"
@@ -282,8 +282,8 @@ export function LandingFooter() {
         <div className="grid content-start justify-items-start gap-3">
           <Wordmark />
           <p className="m-0 max-w-xs text-[13px] leading-relaxed text-muted">
-            See what a purchase adds — not what it repeats. Map the capability
-            delta before you buy.
+            See what a purchase adds — not what it repeats. Compare before you
+            buy.
           </p>
         </div>
         <nav className="grid content-start gap-2" aria-label="Product">
@@ -317,7 +317,7 @@ export function LandingFooter() {
       </div>
       <div className="border-t border-hairline-soft">
         <p className="mx-auto m-0 w-full max-w-6xl px-4 py-4 text-[11px] text-faint md:px-6">
-          Guest demo runs fully offline · Confirmed items belong to your account
+          Your confirmed inventory belongs to your account
         </p>
       </div>
     </footer>

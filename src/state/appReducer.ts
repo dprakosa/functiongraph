@@ -1,4 +1,3 @@
-import { KG_PER_DOLLAR } from "../lib/copy";
 import type { RouteResult } from "../lib/route";
 import type { EvaluateResult } from "../lib/types";
 
@@ -17,11 +16,6 @@ export type Phase =
 
 export type View = { level: "home" } | { level: "room"; domain: string };
 
-export interface Impact {
-  dollarsKept: number;
-  kgAvoided: number;
-}
-
 export interface AppState {
   phase: Phase;
   view: View;
@@ -37,7 +31,6 @@ export interface AppState {
   reason: string;
   error: { error: string; hint: string } | null;
   toast: string | null;
-  impact: Impact;
 }
 
 export type AppAction =
@@ -69,7 +62,7 @@ export type AppAction =
   | { type: "UNSCANNED_TAPPED"; message: string }
   | { type: "TOAST_CLEARED" };
 
-export function initialState(impact: Impact): AppState {
+export function initialState(): AppState {
   return {
     phase: "resting",
     view: { level: "home" },
@@ -84,11 +77,10 @@ export function initialState(impact: Impact): AppState {
     reason: "",
     error: null,
     toast: null,
-    impact,
   };
 }
 
-/** Clear one evaluation, keep view + impact. */
+/** Clear one evaluation while keeping the current room. */
 function clearedEvaluation(state: AppState): AppState {
   return {
     ...state,
@@ -226,16 +218,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         toast: null,
       };
 
-    case "PURCHASE_SKIPPED": {
-      const price = state.result?.price ?? 0;
-      return {
-        ...clearedEvaluation(state),
-        impact: {
-          dollarsKept: state.impact.dollarsKept + price,
-          kgAvoided: state.impact.kgAvoided + price * KG_PER_DOLLAR,
-        },
-      };
-    }
+    case "PURCHASE_SKIPPED":
+      return clearedEvaluation(state);
 
     case "STILL_NEEDED":
       return { ...state, stillNeedItOpen: true };

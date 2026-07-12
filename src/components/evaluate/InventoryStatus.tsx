@@ -8,8 +8,8 @@ export function inventoryStatusCopy(inventory: ActiveInventoryState): {
   switch (inventory.status) {
     case "guest":
       return {
-        label: "Guest inventory",
-        detail: `${inventory.items.length} bundled items · examples stay offline`,
+        label: "Starter household",
+        detail: `${inventory.items.length} everyday items`,
       };
     case "loading":
       return { label: "Personal inventory", detail: "Loading your confirmed items" };
@@ -37,7 +37,7 @@ export function InventoryStatus({
   return (
     <section
       className="flex items-center justify-between gap-3"
-      aria-label="Inventory status and photo action"
+      aria-label="Inventory status"
     >
       <div
         className="flex min-w-0 items-center gap-2"

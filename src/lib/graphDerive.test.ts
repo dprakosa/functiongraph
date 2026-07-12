@@ -45,26 +45,24 @@ describe("hub promotion (ALG-8)", () => {
     }
   });
 
-  it("marks local degree ≥ 4 hubs hot, including the degree-7 usb-c hub", () => {
+  it("marks local degree ≥ 4 hubs hot, including the usb-c hub", () => {
     const hubs = deriveRoomHubs(items, "electronics");
     const byName = new Map(hubs.map((hub) => [hub.name, hub]));
-    expect(byName.get("charges usb-c devices")?.degree).toBe(7);
+    expect(byName.get("charges usb-c devices")?.degree).toBe(5);
     expect(byName.get("charges usb-c devices")?.hot).toBe(true);
     hubs.forEach((hub) => expect(hub.hot).toBe(hub.degree >= 4));
   });
 
   it("produces sensible shared-function clusters in garage and bathroom", () => {
     expect(deriveRoomHubs(items, "garage").map((hub) => hub.name)).toEqual([
-      "blows dust from surfaces",
-      "collects sawdust",
       "drives screws",
-      "inflates vehicle tires",
+      "removes household dust",
     ]);
     expect(deriveRoomHubs(items, "bathroom").map((hub) => hub.name)).toEqual([
-      "massages gums",
       "styles hair",
-      "trims body hair",
       "trims facial hair",
+      "cleans teeth",
+      "massages gums",
     ]);
   });
 });
@@ -78,7 +76,7 @@ describe("room navigation and emergent clusters (ALG-9)", () => {
       "garage",
       "bathroom",
     ]);
-    expect(rooms.map((room) => room.itemIds.length)).toEqual([13, 8, 8, 7]);
+    expect(rooms.map((room) => room.itemIds.length)).toEqual([19, 18, 16, 11]);
   });
 });
 

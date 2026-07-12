@@ -35,7 +35,7 @@ function stateFor(
   overrides: Partial<AppState> = {},
 ): AppState {
   return {
-    ...initialState({ dollarsKept: 0, kgAvoided: 0 }),
+    ...initialState(),
     phase,
     result: RESULT,
     route: NO_MATCH_ROUTE,

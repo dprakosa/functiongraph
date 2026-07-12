@@ -19,7 +19,7 @@ export function NotFoundPage({ pathname }: { pathname: string }) {
           This page is not in the graph.
         </h1>
         <p className="m-0 text-[15px] leading-relaxed text-body">
-          There is no FunctionGraph page at{" "}
+          There is no Subgraph page at{" "}
           <code className="rounded-chip bg-hairline-soft px-1.5 py-0.5 text-[13px] text-ink">
             {pathname}
           </code>

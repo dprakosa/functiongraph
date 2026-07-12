@@ -290,8 +290,8 @@ function InventoryBody({
           Your account starts empty
         </h2>
         <p className="m-0 max-w-sm text-[13px] leading-relaxed text-muted">
-          Use Add from photo to scan what you own and build your capability
-          graph. Demo items are never substituted into your account.
+          Use Add from photo to scan what you own. Confirmed items appear here
+          and become part of every product comparison.
         </p>
       </div>
     );
@@ -350,7 +350,7 @@ export function InventoryPage() {
           </h1>
           <p className="m-0 text-[13px] text-muted">
             {inventory.status === "guest"
-              ? `${itemCount} bundled items across your demo home`
+              ? `${itemCount} everyday items across a starter household`
               : inventory.status === "populated"
                 ? `${itemCount} confirmed ${itemCount === 1 ? "item" : "items"}`
                 : "The objects your evaluations are scored against"}
@@ -365,9 +365,9 @@ export function InventoryPage() {
       {inventory.status === "guest" && (
         <aside className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-card border border-accent/20 bg-accent-soft/60 px-4 py-3">
           <p className="m-0 text-[13px] text-body">
-            <strong className="font-semibold text-ink">Guest demo home.</strong>{" "}
-            These 36 bundled items are read-only — sign in to build an inventory
-            of your own.
+            <strong className="font-semibold text-ink">Starter household.</strong>{" "}
+            Browse these common items to see how Subgraph works, then sign in to
+            use the items in your own home.
           </p>
           <RouteLink
             to="/settings"

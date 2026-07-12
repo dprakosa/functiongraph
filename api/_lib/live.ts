@@ -43,14 +43,14 @@ export function readLiveConfig(
   const apiKey = environment.OPENAI_API_KEY?.trim();
   if (!apiKey) {
     throw new LiveUnavailableError(
-      "live evaluation isn't configured on this deployment",
+      "the evaluation service is temporarily unavailable",
     );
   }
 
   const chatModel = environment.OPENAI_MODEL?.trim();
   if (!chatModel || !IMMUTABLE_SNAPSHOT_SUFFIX.test(chatModel)) {
     throw new LiveUnavailableError(
-      "live evaluation requires an immutable model snapshot",
+      "the evaluation service is temporarily unavailable",
     );
   }
 
@@ -58,7 +58,7 @@ export function readLiveConfig(
   const embedRevision = environment.OPENAI_EMBED_REVISION?.trim();
   if (!embedModel || !embedRevision || /^(?:latest|current)$/i.test(embedRevision)) {
     throw new LiveUnavailableError(
-      "live evaluation requires a pinned embedding model and deployment revision",
+      "the evaluation service is temporarily unavailable",
     );
   }
 

@@ -22,15 +22,15 @@ const AUTH_FAILURES: Record<
   evaluation: {
     unauthenticated: {
       error: "sign in to evaluate a live product",
-      hint: "sign in and try again, or tap an example — those never touch the network",
+      hint: "sign in and try again, or choose one of the suggested products",
     },
     "not-configured": {
-      error: "live evaluation authentication isn't configured",
-      hint: "configure Clerk on the server, or tap an example — those never touch the network",
+      error: "product checks are temporarily unavailable",
+      hint: "try again later or choose one of the suggested products",
     },
     unavailable: {
       error: "sign-in verification is temporarily unavailable",
-      hint: "try again in a moment, or tap an example — those never touch the network",
+      hint: "try again in a moment or choose one of the suggested products",
     },
   },
   photo: {
@@ -39,8 +39,8 @@ const AUTH_FAILURES: Record<
       hint: "sign in and try the photo again",
     },
     "not-configured": {
-      error: "photo scanning authentication isn't configured",
-      hint: "configure Clerk on the server before scanning a photo",
+      error: "photo scanning is temporarily unavailable",
+      hint: "try again in a little while",
     },
     unavailable: {
       error: "sign-in verification is temporarily unavailable",
@@ -53,8 +53,8 @@ const AUTH_FAILURES: Record<
       hint: "sign in and load your confirmed items again",
     },
     "not-configured": {
-      error: "personal inventory authentication isn't configured",
-      hint: "configure Clerk on the server before loading personal inventory",
+      error: "personal inventory is temporarily unavailable",
+      hint: "try loading your inventory again in a little while",
     },
     unavailable: {
       error: "sign-in verification is temporarily unavailable",

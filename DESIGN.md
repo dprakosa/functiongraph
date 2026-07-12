@@ -1,10 +1,10 @@
-# FunctionGraph visual implementation guide — clean light SaaS edition
+# Subgraph visual implementation guide — clean light SaaS edition
 
 ## Authority and intent
 
 This is the repository's authoritative visual implementation guide. **`PDD.md` is the highest-precedence source of truth**—that is the actual specification filename in this repository. If this guide, `README.md`, `CLAUDE.md`, code comments, or chat history conflicts with `PDD.md`, follow `PDD.md`. Do not alter normative requirement IDs, values, algorithms, state ordering, or scope through visual work. This edition supersedes the Atlassian Design System edition per the 2026-07-12 decision-log entry in `PDD.md` §14.
 
-FunctionGraph is a bright, trustworthy, consumer-grade decision tool in the clean light SaaS tradition (Stripe/Notion register): white canvases, one quiet gray shell tint, hairline borders, restrained navy-tinted shadows, generous whitespace on marketing surfaces and calm density in the app. The product has two visual modes:
+Subgraph is a bright, trustworthy, consumer-grade decision tool in the clean light SaaS tradition (Stripe/Notion register): white canvases, one quiet gray shell tint, hairline borders, restrained navy-tinted shadows, generous whitespace on marketing surfaces and calm density in the app. The product has two visual modes:
 
 - **Marketing surfaces** (`/`, 404): editorial scale, soft radial gradients on the hero and final CTA only, big tight-tracked headlines, the product itself as the trust anchor.
 - **Application surfaces** (`/graph`, `/inventory`, `/history`, `/settings`): a persistent sidebar shell beside a white working canvas. On the Evaluate page the graph—not a dashboard grid—is the protagonist; chrome floats over it as blurred pills.

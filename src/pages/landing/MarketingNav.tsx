@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { RouteLink } from "../../routing/RouteLink";
 import { Wordmark } from "../../components/shell/Sidebar";
+import { AuthActionSlot } from "../../auth/AuthShell";
 
 const LINKS = [
   { href: "#how-it-works", label: "How it works" },
@@ -41,12 +42,15 @@ export function MarketingNav() {
             </a>
           ))}
         </div>
-        <RouteLink
-          to="/graph"
-          className="rounded-control bg-accent px-3.5 py-2 text-[13px] font-semibold text-white no-underline shadow-xs transition-colors hover:bg-accent-hover active:bg-accent-pressed"
-        >
-          Open the app
-        </RouteLink>
+        <div className="flex items-center gap-2">
+          <AuthActionSlot />
+          <RouteLink
+            to="/graph"
+            className="rounded-control bg-accent px-3.5 py-2 text-[13px] font-semibold text-white no-underline shadow-xs transition-colors hover:bg-accent-hover active:bg-accent-pressed"
+          >
+            Open the app
+          </RouteLink>
+        </div>
       </nav>
     </header>
   );

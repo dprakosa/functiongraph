@@ -46,7 +46,7 @@ export default async function evaluate(
     // next step rather than letting the serverless runtime emit an opaque 500.
     response.status(500).json({
       error: "evaluation failed unexpectedly",
-      hint: "tap an example — those never touch the network",
+      hint: "choose one of the suggested products and try again",
     });
   }
 }

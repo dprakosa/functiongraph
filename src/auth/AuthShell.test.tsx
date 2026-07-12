@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AuthShell, AuthStatusSlot } from "./AuthShell";
+import { AuthActionSlot, AuthShell, AuthStatusSlot } from "./AuthShell";
 
 const clerk = vi.hoisted(() => ({
   state: "signed-out" as "loading" | "signed-out" | "signed-in" | "failed",
@@ -37,10 +37,19 @@ vi.mock("@clerk/react", () => ({
   SignInButton: ({
     children,
     mode,
+    fallbackRedirectUrl,
   }: {
     children: ReactNode;
     mode: string;
-  }) => <div data-sign-in-mode={mode}>{children}</div>,
+    fallbackRedirectUrl?: string;
+  }) => (
+    <div
+      data-sign-in-mode={mode}
+      data-fallback-redirect-url={fallbackRedirectUrl}
+    >
+      {children}
+    </div>
+  ),
   SignUpButton: ({
     children,
     mode,
@@ -60,9 +69,17 @@ vi.mock("@clerk/react", () => ({
 function AppStub() {
   return (
     <main>
-      FunctionGraph app
+      Subgraph app
       <AuthStatusSlot />
     </main>
+  );
+}
+
+function MarketingActionStub() {
+  return (
+    <nav aria-label="Account navigation">
+      <AuthActionSlot />
+    </nav>
   );
 }
 
@@ -80,14 +97,14 @@ describe("AuthShell", () => {
         </AuthShell>,
       );
 
-      expect(screen.getByRole("main")).toHaveTextContent("FunctionGraph app");
-      expect(screen.getByText("Guest demo")).toBeVisible();
-      expect(screen.getByText(/three examples run fully offline/i)).toBeVisible();
+      expect(screen.getByRole("main")).toHaveTextContent("Subgraph app");
+      expect(screen.getByText("Starter inventory")).toBeVisible();
+      expect(screen.getByText(/ready-to-use household inventory/i)).toBeVisible();
       expect(screen.queryByTestId("clerk-provider")).not.toBeInTheDocument();
     },
   );
 
-  it("offers modal sign-in and sign-up while keeping the signed-out demo visible", () => {
+  it("offers modal sign-in and sign-up while keeping the starter inventory visible", () => {
     const { container } = render(
       <AuthShell publishableKey="  pk_test_example  ">
         <AppStub />
@@ -98,13 +115,27 @@ describe("AuthShell", () => {
       "data-publishable-key",
       "pk_test_example",
     );
-    expect(screen.getByText("Guest demo")).toBeVisible();
-    expect(screen.getByText(/examples work offline/i)).toBeVisible();
+    expect(screen.getByText("Starter inventory")).toBeVisible();
+    expect(screen.getByText(/items in your own home/i)).toBeVisible();
     expect(screen.getByRole("button", { name: "Sign in" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Sign up" })).toBeVisible();
     expect(container.querySelector("[data-sign-in-mode='modal']")).not.toBeNull();
     expect(container.querySelector("[data-sign-up-mode='modal']")).not.toBeNull();
     expect(screen.getByRole("main")).toBeVisible();
+  });
+
+  it("exposes a working sign-in action to the marketing navigation", () => {
+    const { container } = render(
+      <AuthShell publishableKey="pk_test_example">
+        <MarketingActionStub />
+      </AuthShell>,
+    );
+
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeVisible();
+    expect(container.querySelector("[data-sign-in-mode='modal']")).toHaveAttribute(
+      "data-fallback-redirect-url",
+      "/graph",
+    );
   });
 
   it("shows the live state and account control for a signed-in user", () => {
@@ -116,7 +147,7 @@ describe("AuthShell", () => {
       </AuthShell>,
     );
 
-    expect(screen.getByText("Live enabled")).toBeVisible();
+    expect(screen.getByText("Your account")).toBeVisible();
     expect(screen.getByText("Account")).toBeVisible();
     expect(
       screen.getByRole("button", { name: "Open account menu" }),
@@ -138,7 +169,7 @@ describe("AuthShell", () => {
     expect(screen.getByRole("main")).toBeVisible();
   });
 
-  it("falls back to the offline guest demo if Clerk fails to load", () => {
+  it("keeps the starter inventory available if Clerk fails to load", () => {
     clerk.state = "failed";
 
     render(
@@ -147,9 +178,8 @@ describe("AuthShell", () => {
       </AuthShell>,
     );
 
-    expect(screen.getByText("Guest demo")).toBeVisible();
-    expect(screen.getByText(/account services are unavailable/i)).toBeVisible();
-    expect(screen.getByText(/examples still run fully offline/i)).toBeVisible();
+    expect(screen.getByText("Starter inventory")).toBeVisible();
+    expect(screen.getByText(/account access is temporarily unavailable/i)).toBeVisible();
     expect(screen.getByRole("main")).toBeVisible();
   });
 });

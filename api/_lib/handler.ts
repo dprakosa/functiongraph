@@ -44,7 +44,7 @@ function liveRateLimited(clientIp: string, now: number): boolean {
   return false;
 }
 
-const HINT_TAP_EXAMPLE = "tap an example — those never touch the network";
+const HINT_TAP_EXAMPLE = "choose one of the suggested products and try again";
 
 function inventoryFingerprint(items: Item[]): string {
   const vocabulary = [...deriveVocabulary(items).keys()].sort().join("\n");

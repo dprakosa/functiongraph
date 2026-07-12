@@ -249,7 +249,7 @@ describe("buildGraph tooltip integration", () => {
       kind: "ghost",
       eyebrow: "Considering",
       title: "Countertop composter",
-      status: "Verdict ready",
+      status: "Result ready",
       details: [{ label: "Price", value: "$249" }],
     });
     expect(findNode(graph, "hubnew:composts-food-scraps").tooltip).toEqual({
@@ -293,7 +293,7 @@ describe("buildGraph tooltip integration", () => {
       kind: "ghost",
       eyebrow: "Considering",
       title: "Connected kettle",
-      status: "Verdict ready",
+      status: "Result ready",
       details: [{ label: "Price", value: "Not provided" }],
     });
     expect(findNode(graph, "hub:boils-water").tooltip.details).toEqual([

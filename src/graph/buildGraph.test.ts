@@ -88,10 +88,10 @@ describe("expanded four-room graph", () => {
       expandedItemId: null,
     });
     expect(graph.nodes.map(({ kind, label, sub }) => ({ kind, label, sub }))).toEqual([
-      { kind: "room", label: "kitchen", sub: "13 items" },
-      { kind: "room", label: "electronics", sub: "8 items" },
-      { kind: "room", label: "garage", sub: "8 items" },
-      { kind: "room", label: "bathroom", sub: "7 items" },
+      { kind: "room", label: "kitchen", sub: "19 items" },
+      { kind: "room", label: "electronics", sub: "18 items" },
+      { kind: "room", label: "garage", sub: "16 items" },
+      { kind: "room", label: "bathroom", sub: "11 items" },
     ]);
   });
 
@@ -179,14 +179,14 @@ describe("room → item → capability hierarchy", () => {
       buildGraph({
         items: inventory.items,
         unscannedRooms: inventory.unscannedRooms,
-        view: { level: "room", domain: "kitchen" },
+        view: { level: "room", domain: "electronics" },
         phase: "resting",
         result: null,
         route: null,
         expandedItemId,
       });
     const unselected = buildRoom(null);
-    const toasterSelected = buildRoom("toaster");
+    const toasterSelected = buildRoom("laptop-dock");
     const signature = (graph: ReturnType<typeof buildGraph>) => ({
       nodes: graph.nodes.map((node) => node.id).sort(),
       edges: graph.edges.map((edge) => edge.id).sort(),
@@ -194,7 +194,12 @@ describe("room → item → capability hierarchy", () => {
 
     expect(signature(toasterSelected)).toEqual(signature(unselected));
     expect([
-      ...deriveItemCapabilitySelection(toasterSelected, "toaster").nodeIds,
-    ]).toEqual(["hub:toasts-bread"]);
+      ...deriveItemCapabilitySelection(toasterSelected, "laptop-dock").nodeIds,
+    ].sort()).toEqual([
+      "hub:adds-usb-ports",
+      "hub:charges-usb-c-devices",
+      "hub:connects-external-displays",
+      "hub:transfers-data-between-devices",
+    ].sort());
   });
 });
