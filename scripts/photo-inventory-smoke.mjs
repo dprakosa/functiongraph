@@ -38,7 +38,7 @@ function smokeBaseUrl() {
 
   const production = process.env.LIVE_PHOTO_SMOKE_PRODUCTION === "1";
   if (production) {
-    if (url.origin !== "https://dprakosa.com" || url.pathname !== "/") {
+    if (url.origin !== "https://www.subgraph.works" || url.pathname !== "/") {
       throw new SmokeFailure("production-url-required");
     }
     return url.origin;
@@ -200,7 +200,7 @@ async function main() {
         }),
       ]);
       response = await fetch(
-        `https://clerk.dprakosa.com/v1/client/sign_ins?__clerk_testing_token=${encodeURIComponent(testingToken.token)}`,
+        `https://clerk.subgraph.works/v1/client/sign_ins?__clerk_testing_token=${encodeURIComponent(testingToken.token)}`,
         {
           method: "POST",
           headers: {

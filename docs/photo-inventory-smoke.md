@@ -62,7 +62,7 @@ npm run test:photo:live
 ## Production release verification
 
 Production verification is intentionally double opt-in and accepts only the
-canonical `https://dprakosa.com` origin. Run it only for an explicit release
+canonical `https://www.subgraph.works` origin. Run it only for an explicit release
 check approved by the project owner. It creates disposable Clerk users and one
 temporary inventory row in Production, exercises the real OpenAI path, and
 removes them in `finally` cleanup:
@@ -70,7 +70,7 @@ removes them in `finally` cleanup:
 ```sh
 vercel env run -e production -- sh -c \
   'LIVE_PHOTO_SMOKE=1 LIVE_PHOTO_SMOKE_PRODUCTION=1 \
-  PHOTO_SMOKE_BASE_URL=https://dprakosa.com npm run test:photo:live'
+  PHOTO_SMOKE_BASE_URL=https://www.subgraph.works npm run test:photo:live'
 ```
 
 Do not set `LIVE_PHOTO_SMOKE_PRODUCTION` in CI or a persistent environment.
