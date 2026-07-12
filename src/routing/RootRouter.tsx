@@ -6,25 +6,18 @@ import {
   type ReactNode,
 } from "react";
 import GraphPage from "../App";
+import { AppShell } from "../components/shell/AppShell";
+import { HistoryPage } from "../pages/HistoryPage";
+import { InventoryPage } from "../pages/InventoryPage";
 import { LandingPage } from "../pages/LandingPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
+import { SettingsPage } from "../pages/SettingsPage";
+import { routeName, titleForRoute } from "./routes";
 import { RouterProvider, type RouterContextValue } from "./RouteLink";
 
 function normalizedPathname(pathname: string): string {
   if (pathname === "/") return pathname;
   return pathname.replace(/\/+$/, "") || "/";
-}
-
-function routeName(pathname: string): "landing" | "graph" | "not-found" {
-  if (pathname === "/") return "landing";
-  if (pathname === "/graph") return "graph";
-  return "not-found";
-}
-
-function titleForRoute(route: ReturnType<typeof routeName>): string {
-  if (route === "landing") return "FunctionGraph — See what a purchase adds";
-  if (route === "graph") return "Your knowledge graph — FunctionGraph";
-  return "Page not found — FunctionGraph";
 }
 
 export function RootRouter() {
@@ -80,11 +73,22 @@ export function RootRouter() {
   let page: ReactNode;
   if (route === "landing") page = <LandingPage />;
   else if (route === "graph") page = <GraphPage />;
+  else if (route === "inventory") page = <InventoryPage />;
+  else if (route === "history") page = <HistoryPage />;
+  else if (route === "settings") page = <SettingsPage />;
   else page = <NotFoundPage pathname={pathname} />;
+
+  const inAppShell =
+    route === "graph" ||
+    route === "inventory" ||
+    route === "history" ||
+    route === "settings";
 
   return (
     <RouterProvider value={router}>
-      <div className={`route-root route-root--${route}`}>{page}</div>
+      <div className={`route-root route-root--${route}`}>
+        {inAppShell ? <AppShell route={route}>{page}</AppShell> : page}
+      </div>
     </RouterProvider>
   );
 }

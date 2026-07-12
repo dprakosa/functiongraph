@@ -282,7 +282,7 @@ describe("FunctionGraph frontend contract", () => {
     render(<App />);
 
     expect(
-      screen.getByRole("link", { name: "FunctionGraph home" }),
+      screen.getByRole("heading", { name: "Evaluate a purchase" }),
     ).toBeVisible();
     expect(
       screen.queryByText("Capability-level purchase decisions, mapped live."),
@@ -298,6 +298,29 @@ describe("FunctionGraph frontend contract", () => {
     expect(
       screen.queryByRole("heading", { name: "Convection countertop oven" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("persists skip decisions to local history", async () => {
+    window.localStorage.clear();
+    setReducedMotion(true);
+    failedFetch();
+    render(<App />);
+
+    const user = await chooseExample(OVEN_CHIP);
+    await screen.findByRole("heading", { name: "Convection countertop oven" });
+    await user.click(screen.getByRole("button", { name: "Skip this purchase" }));
+
+    const stored = JSON.parse(
+      window.localStorage.getItem("functiongraph:decisions:v1") ?? "[]",
+    );
+    expect(stored).toHaveLength(1);
+    expect(stored[0]).toMatchObject({
+      product: "Convection countertop oven",
+      price: 129,
+      choice: "skipped",
+      coveredCount: 4,
+      totalCount: 5,
+    });
   });
 
   it("collects a still-needed reason and then clears the verdict on Buy anyway", async () => {

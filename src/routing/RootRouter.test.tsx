@@ -102,6 +102,27 @@ describe("RootRouter", () => {
     expect(graphHeading).toHaveFocus();
   });
 
+  it.each([
+    ["/inventory", "inventory", "Your inventory"],
+    ["/history", "history", "Decision history"],
+    ["/settings", "settings", "Settings"],
+  ])(
+    "renders the %s app page inside the app shell",
+    (pathname, route, heading) => {
+      setPath(pathname);
+
+      render(<RootRouter />);
+
+      expect(
+        screen.getByRole("heading", { level: 1, name: heading }),
+      ).toBeVisible();
+      expect(document.body).toHaveAttribute("data-route", route);
+      expect(
+        screen.getByRole("navigation", { name: "Application" }),
+      ).toBeVisible();
+    },
+  );
+
   it("renders an accessible not-found page with links to both known routes", () => {
     setPath("/missing/place");
     render(<RootRouter />);

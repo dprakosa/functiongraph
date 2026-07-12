@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AuthShell } from "./AuthShell";
+import { AuthShell, AuthStatusSlot } from "./AuthShell";
 
 const clerk = vi.hoisted(() => ({
   state: "signed-out" as "loading" | "signed-out" | "signed-in" | "failed",
@@ -51,8 +51,18 @@ vi.mock("@clerk/react", () => ({
   UserButton: () => <button aria-label="Open account menu" type="button" />,
 }));
 
+/**
+ * Mirrors how the app consumes AuthShell: page content plus the account
+ * status block rendered through AuthStatusSlot (in the real app it mounts
+ * inside the sidebar).
+ */
 function AppStub() {
-  return <main>FunctionGraph app</main>;
+  return (
+    <main>
+      FunctionGraph app
+      <AuthStatusSlot />
+    </main>
+  );
 }
 
 describe("AuthShell", () => {

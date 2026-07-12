@@ -26,6 +26,7 @@ interface ViewerState {
 }
 
 const ViewerStateContext = createContext<ViewerState>({ mode: "guest" });
+const AuthStatusContext = createContext<ReactNode>(null);
 
 export function useViewerState(): ViewerState {
   return useContext(ViewerStateContext);
@@ -45,6 +46,15 @@ export function ViewerStateProvider({
   );
 }
 
+/**
+ * Renders the account status block for the current auth state wherever it is
+ * placed (app sidebar, settings page, marketing nav). The status node itself
+ * is selected by AuthShell so Clerk state handling stays in one place.
+ */
+export function AuthStatusSlot() {
+  return <>{useContext(AuthStatusContext)}</>;
+}
+
 function AuthFrame({
   mode,
   status,
@@ -56,10 +66,11 @@ function AuthFrame({
 }) {
   return (
     <ViewerStateProvider mode={mode}>
-      <div className="auth-shell" data-viewer-mode={mode}>
-        {status}
-        <div className="auth-shell__content">{children}</div>
-      </div>
+      <AuthStatusContext.Provider value={status}>
+        <div className="contents" data-viewer-mode={mode}>
+          {children}
+        </div>
+      </AuthStatusContext.Provider>
     </ViewerStateProvider>
   );
 }
@@ -74,12 +85,24 @@ function StatusCopy({
   tone?: "demo" | "live" | "loading";
 }) {
   return (
-    <div className="auth-status__copy">
-      <span className={`auth-status__label auth-status__label--${tone}`}>
-        <i aria-hidden="true" />
+    <div className="grid gap-1">
+      <span
+        className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-ink"
+        data-tone={tone}
+      >
+        <i
+          aria-hidden="true"
+          className={`h-1.5 w-1.5 rounded-full ${
+            tone === "live"
+              ? "bg-new"
+              : tone === "loading"
+                ? "animate-pulse bg-faint"
+                : "bg-faint"
+          }`}
+        />
         {label}
       </span>
-      <p>{children}</p>
+      <p className="m-0 text-xs leading-relaxed text-muted">{children}</p>
     </div>
   );
 }
@@ -87,7 +110,7 @@ function StatusCopy({
 export function GuestDemoStatus({ unavailable = false }: GuestDemoStatusProps) {
   return (
     <aside
-      className="auth-status"
+      className="grid gap-2"
       aria-label="Account status"
       data-auth-state="guest-demo"
     >
@@ -103,7 +126,7 @@ export function GuestDemoStatus({ unavailable = false }: GuestDemoStatusProps) {
 function AuthLoadingStatus() {
   return (
     <aside
-      className="auth-status"
+      className="grid gap-2"
       aria-label="Account status"
       aria-live="polite"
       data-auth-state="loading"
@@ -118,21 +141,27 @@ function AuthLoadingStatus() {
 function SignedOutStatus() {
   return (
     <aside
-      className="auth-status"
+      className="grid gap-2.5"
       aria-label="Account status"
       data-auth-state="signed-out"
     >
       <StatusCopy label="Guest demo">
         The three examples work offline. Sign in for live product checks.
       </StatusCopy>
-      <div className="auth-status__actions" aria-label="Account actions">
+      <div className="flex gap-2" aria-label="Account actions">
         <SignInButton mode="modal">
-          <button className="auth-action auth-action--primary" type="button">
+          <button
+            className="rounded-control bg-accent px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-accent-hover active:bg-accent-pressed"
+            type="button"
+          >
             Sign in
           </button>
         </SignInButton>
         <SignUpButton mode="modal">
-          <button className="auth-action" type="button">
+          <button
+            className="rounded-control border border-hairline bg-white px-3 py-1.5 text-xs font-semibold text-body transition-colors hover:bg-hairline-soft"
+            type="button"
+          >
             Sign up
           </button>
         </SignUpButton>
@@ -144,15 +173,15 @@ function SignedOutStatus() {
 function SignedInStatus() {
   return (
     <aside
-      className="auth-status"
+      className="grid gap-2.5"
       aria-label="Account status"
       data-auth-state="signed-in"
     >
       <StatusCopy label="Live enabled" tone="live">
         Signed in for live product checks. Offline examples remain available.
       </StatusCopy>
-      <div className="auth-status__account">
-        <span>Account</span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-medium text-muted">Account</span>
         <UserButton />
       </div>
     </aside>
