@@ -62,7 +62,7 @@ describe("RootRouter", () => {
     const pushState = vi.spyOn(window.history, "pushState");
     render(<RootRouter />);
 
-    const cta = screen.getByRole("link", { name: /open the graph/i });
+    const cta = screen.getByRole("link", { name: /^check a product$/i });
     expect(cta).toHaveAttribute("href", "/graph");
 
     await user.click(cta);
@@ -80,7 +80,7 @@ describe("RootRouter", () => {
     const user = userEvent.setup();
     render(<RootRouter />);
 
-    await user.click(screen.getByRole("link", { name: /open the graph/i }));
+    await user.click(screen.getByRole("link", { name: /^check a product$/i }));
     expect(window.location.pathname).toBe("/graph");
 
     act(() => window.history.back());

@@ -1,7 +1,65 @@
 {
-  "version": 2,
+  "version": 3,
   "unscannedRooms": [],
   "items": [
+    {
+      "id": "refrigerator-freezer",
+      "name": "Refrigerator freezer",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "keeps food cold", "tier": "primary" },
+        { "name": "freezes food", "tier": "primary" },
+        { "name": "stores fresh food", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "oven",
+      "name": "Oven",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "bakes food", "tier": "primary" },
+        { "name": "roasts food", "tier": "primary" },
+        { "name": "broils food", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "cooktop",
+      "name": "Cooktop",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "boils water", "tier": "primary" },
+        { "name": "fries food", "tier": "primary" },
+        { "name": "simmers sauces", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "dishwasher",
+      "name": "Dishwasher",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "washes dishes", "tier": "primary" },
+        { "name": "dries dishes", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "microwave",
+      "name": "Microwave",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "reheats leftovers", "tier": "primary" },
+        { "name": "defrosts frozen food", "tier": "primary" },
+        { "name": "cooks quick meals", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "toaster",
+      "name": "Toaster",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "toasts bread", "tier": "primary" },
+        { "name": "warms pastries", "tier": "secondary" }
+      ]
+    },
     {
       "id": "air-fryer",
       "name": "Air fryer",
@@ -14,35 +72,61 @@
       ]
     },
     {
-      "id": "microwave",
-      "name": "Microwave",
-      "domain": "kitchen",
-      "capabilities": [
-        { "name": "reheats leftovers", "tier": "primary" },
-        { "name": "defrosts frozen food", "tier": "primary" },
-        { "name": "keeps food warm", "tier": "secondary" }
-      ]
-    },
-    {
-      "id": "toaster",
-      "name": "Toaster",
-      "domain": "kitchen",
-      "capabilities": [{ "name": "toasts bread", "tier": "primary" }]
-    },
-    {
-      "id": "sandwich-press",
-      "name": "Sandwich press",
-      "domain": "kitchen",
-      "capabilities": [
-        { "name": "grills sandwiches", "tier": "primary" },
-        { "name": "toasts bread", "tier": "secondary" }
-      ]
-    },
-    {
       "id": "electric-kettle",
       "name": "Electric kettle",
       "domain": "kitchen",
-      "capabilities": [{ "name": "boils water", "tier": "primary" }]
+      "capabilities": [
+        { "name": "boils water", "tier": "primary" },
+        { "name": "keeps water warm", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "coffee-maker",
+      "name": "Coffee maker",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "brews coffee", "tier": "primary" },
+        { "name": "keeps coffee warm", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "blender",
+      "name": "Blender",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "blends smoothies", "tier": "primary" },
+        { "name": "purees soups", "tier": "secondary" },
+        { "name": "crushes ice", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "food-processor",
+      "name": "Food processor",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "chops vegetables", "tier": "primary" },
+        { "name": "slices vegetables", "tier": "primary" },
+        { "name": "kneads dough", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "hand-mixer",
+      "name": "Hand mixer",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "mixes batter", "tier": "primary" },
+        { "name": "whips cream", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "stand-mixer",
+      "name": "Stand mixer",
+      "domain": "kitchen",
+      "capabilities": [
+        { "name": "mixes batter", "tier": "primary" },
+        { "name": "kneads dough", "tier": "primary" },
+        { "name": "whips cream", "tier": "secondary" }
+      ]
     },
     {
       "id": "rice-cooker",
@@ -50,8 +134,8 @@
       "domain": "kitchen",
       "capabilities": [
         { "name": "cooks rice", "tier": "primary" },
-        { "name": "keeps food warm", "tier": "secondary" },
-        { "name": "boils water", "tier": "secondary" }
+        { "name": "steams vegetables", "tier": "secondary" },
+        { "name": "keeps food warm", "tier": "secondary" }
       ]
     },
     {
@@ -60,6 +144,7 @@
       "domain": "kitchen",
       "capabilities": [
         { "name": "simmers stews", "tier": "primary" },
+        { "name": "cooks meals slowly", "tier": "primary" },
         { "name": "keeps food warm", "tier": "secondary" }
       ]
     },
@@ -75,43 +160,12 @@
       ]
     },
     {
-      "id": "blender",
-      "name": "Blender",
+      "id": "sandwich-press",
+      "name": "Sandwich press",
       "domain": "kitchen",
       "capabilities": [
-        { "name": "blends smoothies", "tier": "primary" },
-        { "name": "crushes ice", "tier": "secondary" },
-        { "name": "purees soups", "tier": "secondary" },
-        { "name": "grinds coffee beans", "tier": "secondary" }
-      ]
-    },
-    {
-      "id": "food-processor",
-      "name": "Food processor",
-      "domain": "kitchen",
-      "capabilities": [
-        { "name": "chops vegetables", "tier": "primary" },
-        { "name": "kneads dough", "tier": "secondary" },
-        { "name": "purees soups", "tier": "secondary" }
-      ]
-    },
-    {
-      "id": "stand-mixer",
-      "name": "Stand mixer",
-      "domain": "kitchen",
-      "capabilities": [
-        { "name": "kneads dough", "tier": "primary" },
-        { "name": "whips cream", "tier": "primary" }
-      ]
-    },
-    {
-      "id": "coffee-maker",
-      "name": "Coffee maker",
-      "domain": "kitchen",
-      "capabilities": [
-        { "name": "brews coffee", "tier": "primary" },
-        { "name": "boils water", "tier": "secondary" },
-        { "name": "grinds coffee beans", "tier": "secondary" }
+        { "name": "grills sandwiches", "tier": "primary" },
+        { "name": "toasts bread", "tier": "secondary" }
       ]
     },
     {
@@ -125,26 +179,153 @@
       ]
     },
     {
-      "id": "braided-usb-c-cable",
-      "name": "Braided USB-C cable",
-      "domain": "electronics",
+      "id": "kitchen-scale",
+      "name": "Kitchen scale",
+      "domain": "kitchen",
       "capabilities": [
-        { "name": "charges usb-c devices", "tier": "primary" },
-        { "name": "transfers data between devices", "tier": "secondary" }
+        { "name": "weighs food", "tier": "primary" },
+        { "name": "measures ingredients", "tier": "secondary" }
       ]
     },
     {
-      "id": "short-usb-c-cable",
-      "name": "Short USB-C cable",
+      "id": "television",
+      "name": "Television",
       "domain": "electronics",
       "capabilities": [
-        { "name": "charges usb-c devices", "tier": "primary" },
-        { "name": "transfers data between devices", "tier": "secondary" }
+        { "name": "displays streaming video", "tier": "primary" },
+        { "name": "plays television audio", "tier": "primary" },
+        { "name": "connects game consoles", "tier": "secondary" }
       ]
     },
     {
-      "id": "usb-c-video-cable",
-      "name": "USB-C video cable",
+      "id": "laptop",
+      "name": "Laptop",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "runs computer apps", "tier": "primary" },
+        { "name": "browses websites", "tier": "primary" },
+        { "name": "joins video calls", "tier": "secondary" },
+        { "name": "stores digital files", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "smartphone",
+      "name": "Smartphone",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "makes phone calls", "tier": "primary" },
+        { "name": "sends messages", "tier": "primary" },
+        { "name": "takes photos", "tier": "primary" },
+        { "name": "browses websites", "tier": "secondary" },
+        { "name": "joins video calls", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "tablet",
+      "name": "Tablet",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "displays streaming video", "tier": "primary" },
+        { "name": "browses websites", "tier": "primary" },
+        { "name": "reads ebooks", "tier": "secondary" },
+        { "name": "joins video calls", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "bluetooth-speaker",
+      "name": "Bluetooth speaker",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "plays wireless audio", "tier": "primary" },
+        { "name": "fills rooms with music", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "headphones",
+      "name": "Headphones",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "plays private audio", "tier": "primary" },
+        { "name": "handles voice calls", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "wifi-router",
+      "name": "Wi-Fi router",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "provides wireless internet", "tier": "primary" },
+        { "name": "connects home devices", "tier": "primary" }
+      ]
+    },
+    {
+      "id": "printer-scanner",
+      "name": "Printer scanner",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "prints documents", "tier": "primary" },
+        { "name": "scans documents", "tier": "primary" },
+        { "name": "copies documents", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "usb-c-monitor",
+      "name": "USB-C monitor",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "displays computer video", "tier": "primary" },
+        { "name": "charges usb-c devices", "tier": "secondary" },
+        { "name": "adds usb ports", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "keyboard",
+      "name": "Keyboard",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "types text", "tier": "primary" },
+        { "name": "controls computer shortcuts", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "mouse",
+      "name": "Computer mouse",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "controls onscreen pointer", "tier": "primary" },
+        { "name": "selects onscreen items", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "webcam",
+      "name": "Webcam",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "captures video calls", "tier": "primary" },
+        { "name": "records desktop video", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "game-console",
+      "name": "Game console",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "plays video games", "tier": "primary" },
+        { "name": "displays streaming video", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "streaming-device",
+      "name": "Streaming device",
+      "domain": "electronics",
+      "capabilities": [
+        { "name": "displays streaming video", "tier": "primary" },
+        { "name": "runs television apps", "tier": "primary" }
+      ]
+    },
+    {
+      "id": "usb-c-cable",
+      "name": "USB-C cable",
       "domain": "electronics",
       "capabilities": [
         { "name": "charges usb-c devices", "tier": "primary" },
@@ -153,10 +334,13 @@
       ]
     },
     {
-      "id": "wall-charger",
-      "name": "USB-C wall charger",
+      "id": "usb-c-charger",
+      "name": "USB-C charger",
       "domain": "electronics",
-      "capabilities": [{ "name": "charges usb-c devices", "tier": "primary" }]
+      "capabilities": [
+        { "name": "charges usb-c devices", "tier": "primary" },
+        { "name": "powers portable devices", "tier": "secondary" }
+      ]
     },
     {
       "id": "power-bank",
@@ -179,26 +363,6 @@
       ]
     },
     {
-      "id": "portable-ssd",
-      "name": "Portable SSD",
-      "domain": "electronics",
-      "capabilities": [
-        { "name": "stores digital files", "tier": "primary" },
-        { "name": "transfers data between devices", "tier": "primary" },
-        { "name": "backs up digital files", "tier": "secondary" }
-      ]
-    },
-    {
-      "id": "usb-c-monitor",
-      "name": "USB-C monitor",
-      "domain": "electronics",
-      "capabilities": [
-        { "name": "displays computer video", "tier": "primary" },
-        { "name": "charges usb-c devices", "tier": "secondary" },
-        { "name": "adds usb ports", "tier": "secondary" }
-      ]
-    },
-    {
       "id": "cordless-drill",
       "name": "Cordless drill",
       "domain": "garage",
@@ -208,52 +372,104 @@
       ]
     },
     {
-      "id": "impact-driver",
-      "name": "Impact driver",
+      "id": "screwdriver-set",
+      "name": "Screwdriver set",
       "domain": "garage",
       "capabilities": [
         { "name": "drives screws", "tier": "primary" },
-        { "name": "tightens fasteners", "tier": "primary" },
-        { "name": "loosens fasteners", "tier": "secondary" }
+        { "name": "removes screws", "tier": "primary" }
       ]
     },
     {
-      "id": "orbital-sander",
-      "name": "Orbital sander",
+      "id": "hammer",
+      "name": "Hammer",
       "domain": "garage",
       "capabilities": [
-        { "name": "sands wood", "tier": "primary" },
-        { "name": "smooths painted surfaces", "tier": "secondary" },
-        { "name": "collects sawdust", "tier": "secondary" }
+        { "name": "drives nails", "tier": "primary" },
+        { "name": "removes nails", "tier": "secondary" }
       ]
     },
     {
-      "id": "shop-vacuum",
-      "name": "Shop vacuum",
+      "id": "pliers",
+      "name": "Pliers",
+      "domain": "garage",
+      "capabilities": [
+        { "name": "grips small objects", "tier": "primary" },
+        { "name": "cuts wire", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "adjustable-wrench",
+      "name": "Adjustable wrench",
+      "domain": "garage",
+      "capabilities": [
+        { "name": "tightens nuts", "tier": "primary" },
+        { "name": "loosens nuts", "tier": "primary" }
+      ]
+    },
+    {
+      "id": "tape-measure",
+      "name": "Tape measure",
+      "domain": "garage",
+      "capabilities": [
+        { "name": "measures length", "tier": "primary" },
+        { "name": "marks straight distances", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "step-ladder",
+      "name": "Step ladder",
+      "domain": "garage",
+      "capabilities": [
+        { "name": "reaches high places", "tier": "primary" },
+        { "name": "supports elevated work", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "extension-cord",
+      "name": "Extension cord",
+      "domain": "garage",
+      "capabilities": [
+        { "name": "extends electrical power", "tier": "primary" },
+        { "name": "powers distant devices", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "vacuum-cleaner",
+      "name": "Vacuum cleaner",
+      "domain": "garage",
+      "capabilities": [
+        { "name": "cleans floors", "tier": "primary" },
+        { "name": "removes household dust", "tier": "primary" },
+        { "name": "cleans upholstery", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "wet-dry-vacuum",
+      "name": "Wet and dry vacuum",
       "domain": "garage",
       "capabilities": [
         { "name": "removes workshop debris", "tier": "primary" },
-        { "name": "collects sawdust", "tier": "primary" },
-        { "name": "vacuums liquid spills", "tier": "secondary" }
+        { "name": "vacuums liquid spills", "tier": "primary" },
+        { "name": "removes household dust", "tier": "secondary" }
       ]
     },
     {
-      "id": "air-compressor",
-      "name": "Air compressor",
+      "id": "broom",
+      "name": "Broom",
       "domain": "garage",
       "capabilities": [
-        { "name": "powers pneumatic tools", "tier": "primary" },
-        { "name": "inflates vehicle tires", "tier": "secondary" },
-        { "name": "blows dust from surfaces", "tier": "secondary" }
+        { "name": "sweeps hard floors", "tier": "primary" },
+        { "name": "collects floor debris", "tier": "secondary" }
       ]
     },
     {
-      "id": "tire-inflator",
-      "name": "Tire inflator",
+      "id": "mop",
+      "name": "Mop",
       "domain": "garage",
       "capabilities": [
-        { "name": "inflates vehicle tires", "tier": "primary" },
-        { "name": "measures tire pressure", "tier": "secondary" }
+        { "name": "cleans hard floors", "tier": "primary" },
+        { "name": "removes floor spills", "tier": "secondary" }
       ]
     },
     {
@@ -266,12 +482,39 @@
       ]
     },
     {
+      "id": "garden-hose",
+      "name": "Garden hose",
+      "domain": "garage",
+      "capabilities": [
+        { "name": "waters plants", "tier": "primary" },
+        { "name": "rinses outdoor surfaces", "tier": "secondary" }
+      ]
+    },
+    {
       "id": "leaf-blower",
       "name": "Leaf blower",
       "domain": "garage",
       "capabilities": [
         { "name": "clears fallen leaves", "tier": "primary" },
-        { "name": "blows dust from surfaces", "tier": "secondary" }
+        { "name": "removes outdoor debris", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "tire-inflator",
+      "name": "Tire inflator",
+      "domain": "garage",
+      "capabilities": [
+        { "name": "inflates vehicle tires", "tier": "primary" },
+        { "name": "measures tire pressure", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "manual-toothbrush",
+      "name": "Toothbrush",
+      "domain": "bathroom",
+      "capabilities": [
+        { "name": "cleans teeth", "tier": "primary" },
+        { "name": "cleans tongue", "tier": "secondary" }
       ]
     },
     {
@@ -280,8 +523,8 @@
       "domain": "bathroom",
       "capabilities": [
         { "name": "cleans teeth", "tier": "primary" },
-        { "name": "massages gums", "tier": "secondary" },
-        { "name": "times brushing sessions", "tier": "secondary" }
+        { "name": "times brushing sessions", "tier": "secondary" },
+        { "name": "massages gums", "tier": "secondary" }
       ]
     },
     {
@@ -308,7 +551,25 @@
       "domain": "bathroom",
       "capabilities": [
         { "name": "straightens hair", "tier": "primary" },
-        { "name": "styles hair", "tier": "primary" }
+        { "name": "styles hair", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "curling-iron",
+      "name": "Curling iron",
+      "domain": "bathroom",
+      "capabilities": [
+        { "name": "curls hair", "tier": "primary" },
+        { "name": "styles hair", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "hair-clippers",
+      "name": "Hair clippers",
+      "domain": "bathroom",
+      "capabilities": [
+        { "name": "cuts head hair", "tier": "primary" },
+        { "name": "trims facial hair", "tier": "secondary" }
       ]
     },
     {
@@ -325,17 +586,26 @@
       "name": "Electric shaver",
       "domain": "bathroom",
       "capabilities": [
-        { "name": "removes facial hair", "tier": "primary" },
+        { "name": "shaves facial hair", "tier": "primary" },
         { "name": "trims facial hair", "tier": "secondary" }
       ]
     },
     {
-      "id": "body-groomer",
-      "name": "Body groomer",
+      "id": "bathroom-scale",
+      "name": "Bathroom scale",
       "domain": "bathroom",
       "capabilities": [
-        { "name": "trims body hair", "tier": "primary" },
-        { "name": "removes body hair", "tier": "primary" }
+        { "name": "measures body weight", "tier": "primary" },
+        { "name": "tracks weight changes", "tier": "secondary" }
+      ]
+    },
+    {
+      "id": "first-aid-kit",
+      "name": "First aid kit",
+      "domain": "bathroom",
+      "capabilities": [
+        { "name": "treats minor cuts", "tier": "primary" },
+        { "name": "stores medical supplies", "tier": "secondary" }
       ]
     }
   ]

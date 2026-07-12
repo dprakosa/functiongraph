@@ -163,7 +163,7 @@ async function main() {
         emailAddress: [
           `functiongraph+clerk_test_${runId}_${suffix}@example.com`,
         ],
-        firstName: "FunctionGraph",
+        firstName: "Subgraph",
         lastName: "Smoke",
         skipPasswordRequirement: true,
         skipLegalChecks: true,

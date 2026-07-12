@@ -289,9 +289,8 @@ function InventoryBody({
           Your account starts empty
         </h2>
         <p className="m-0 max-w-sm text-[13px] leading-relaxed text-muted">
-          Confirmed items will appear here and build your capability graph. The
-          photo scan flow arrives next — demo items are never substituted into
-          your account.
+          Items you add will appear here and become part of every product
+          comparison.
         </p>
       </div>
     );
@@ -350,30 +349,20 @@ export function InventoryPage() {
           </h1>
           <p className="m-0 text-[13px] text-muted">
             {inventory.status === "guest"
-              ? `${itemCount} bundled items across your demo home`
+              ? `${itemCount} everyday items across a starter household`
               : inventory.status === "populated"
                 ? `${itemCount} confirmed ${itemCount === 1 ? "item" : "items"}`
                 : "The objects your evaluations are scored against"}
           </p>
         </div>
-        <button
-          className="flex items-center gap-1.5 rounded-control border border-hairline bg-white px-3 py-2 text-xs font-medium text-body shadow-xs"
-          type="button"
-          disabled
-        >
-          Add from photo
-          <small className="text-[9px] font-semibold tracking-wide text-faint uppercase">
-            Coming next
-          </small>
-        </button>
       </header>
 
       {inventory.status === "guest" && (
         <aside className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-card border border-accent/20 bg-accent-soft/60 px-4 py-3">
           <p className="m-0 text-[13px] text-body">
-            <strong className="font-semibold text-ink">Guest demo home.</strong>{" "}
-            These 36 bundled items are read-only — sign in to build an inventory
-            of your own.
+            <strong className="font-semibold text-ink">Starter household.</strong>{" "}
+            Browse these common items to see how Subgraph works, then sign in to
+            use the items in your own home.
           </p>
           <RouteLink
             to="/settings"

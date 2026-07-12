@@ -40,9 +40,9 @@ function titleCase(value: string): string {
 function phaseMessage(state: AppState): string | null {
   switch (state.phase) {
     case "extracting":
-      return "Extracting capabilities";
+      return "Reading the product";
     case "scanning":
-      return "Scanning every room";
+      return "Comparing with your inventory";
     case "routing":
       return state.route?.domain
         ? copy.routeToast(
@@ -53,8 +53,8 @@ function phaseMessage(state: AppState): string | null {
         : copy.routeNoMatch;
     case "settling":
       return state.route?.domain
-        ? `Settling into ${titleCase(state.route.domain)}`
-        : "Settling";
+        ? `Preparing your ${titleCase(state.route.domain)} result`
+        : "Preparing your result";
     default:
       return null;
   }
@@ -90,10 +90,7 @@ export default function GraphPage() {
   const activeItems = activeInventory.items ?? [];
   const unscannedRooms =
     activeInventory.status === "guest" ? guestInventory.unscannedRooms : [];
-  const [state, dispatch] = useReducer(appReducer, initialState({
-    dollarsKept: 0,
-    kgAvoided: 0,
-  }));
+  const [state, dispatch] = useReducer(appReducer, initialState());
   const [draft, setDraft] = useState("");
   const requestSequence = useRef(0);
   const reducedMotion = useReducedMotion();
@@ -134,7 +131,7 @@ export default function GraphPage() {
   const statusMessage = phaseMessage(state);
   const viewLabel =
     state.view.level === "home"
-      ? "Your capability map"
+      ? "Your household map"
       : `${titleCase(state.view.domain)} room`;
   const viewKey =
     state.view.level === "home" ? "home" : `room:${state.view.domain}`;
@@ -172,7 +169,7 @@ export default function GraphPage() {
         hint:
           error instanceof EvaluateFailure
             ? error.hint
-            : "tap an example — those never touch the network",
+            : "choose one of the suggested products and try again",
       });
     }
   };
@@ -272,7 +269,7 @@ export default function GraphPage() {
             aria-label="Extracted capabilities"
           >
             <div className="flex items-baseline gap-2 pt-1.5 text-[11px] font-semibold text-muted">
-              <span>Capabilities</span>
+              <span>What it can do</span>
               <span className="text-metric text-faint">
                 {state.revealedChips} / {state.result.capabilities.length}
               </span>
@@ -318,7 +315,7 @@ export default function GraphPage() {
                 </button>
               )}
               <p className="m-0 text-[9.5px] font-semibold tracking-widest text-faint uppercase">
-                Live inventory
+                Household inventory
               </p>
               <h2 className="m-0 text-[13px] font-semibold tracking-tight text-ink">
                 {viewLabel}
@@ -361,10 +358,10 @@ export default function GraphPage() {
           )}
 
           {showGraph && state.phase === "resting" && state.view.level === "home" && (
-            <p className="canvas-hint">Tap a room, or map a product above</p>
+            <p className="canvas-hint">Tap a room, or check a product above</p>
           )}
           {showGraph && state.phase === "resting" && state.view.level === "room" && (
-            <p className="canvas-hint">Tap an item to highlight its capabilities</p>
+            <p className="canvas-hint">Tap an item to see what it can do</p>
           )}
           {statusMessage && (
             <div

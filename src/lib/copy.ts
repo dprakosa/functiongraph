@@ -3,31 +3,23 @@
  * never substitutes synonyms; sentence case throughout.
  */
 
-/** CNT-5: placeholder heuristic — replace with a per-category table if time allows. */
-export const KG_PER_DOLLAR = 0.018;
-
 export const copy = {
   coverageLine: (covered: number, total: number) => `${covered} of ${total} covered`,
-  coverageSub: (percent: number) => `${percent} % of this, you already own`,
-  deltaNew: (price: number, count: number, each: number) =>
-    `Δ $${price} buys ${count} new function${count === 1 ? "" : "s"} — $${each} each`,
-  deltaNothing: (price: number) => `Δ $${price} buys nothing you don't already own`,
-  approval: "Genuinely new — nothing you own does this",
+  coverageSub: (percent: number) => `${percent}% of its uses are already covered`,
+  approval: "This would add something new",
   rowSource: (coverer: string, covererCount: number) =>
     covererCount > 1 ? `${coverer} + ${covererCount - 1} more` : coverer,
-  rowNew: "not owned — new",
-  impact: (dollars: number, kg: number) =>
-    `$${dollars} kept · ${kg.toFixed(1)} kg landfill avoided`,
+  rowNew: "not in your inventory",
   routeToast: (room: string, matches: number, total: number) =>
     `${room.charAt(0).toUpperCase()}${room.slice(1)} · ${matches} of ${total} matches`,
-  routeNoMatch: "No matches anywhere — genuinely new",
+  routeNoMatch: "Nothing in your inventory already does this",
   ghostLabel: (name: string, price: number | null) =>
     price != null ? `${name} · $${price} · considering` : `${name} · considering`,
   skipAction: "Skip this purchase",
   stillNeedAction: "I still need it",
   buyAction: "Buy anyway",
-  reasonPrompt: "What's it for? teaches the graph",
+  reasonPrompt: "Why do you still need it?",
   unscannedCta: "scan this room",
   unscannedToast:
-    "This room isn't scanned yet — the photo scanning interface is still on the roadmap. The four seeded rooms are live.",
+    "Add items from this room to include them in future comparisons.",
 };

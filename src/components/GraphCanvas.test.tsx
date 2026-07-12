@@ -140,7 +140,7 @@ function graphNode(container: HTMLElement, id: string): SVGGElement {
 
 function graphSvg(): SVGSVGElement {
   return screen.getByRole("group", {
-    name: "FunctionGraph capability graph",
+    name: "Subgraph capability graph",
   }) as unknown as SVGSVGElement;
 }
 
@@ -309,15 +309,15 @@ describe("GraphCanvas node tooltips", () => {
 
     fireEvent.pointerEnter(originalGhost);
     expect(
-      within(screen.getByRole("tooltip")).getByText("Scanning inventory"),
+      within(screen.getByRole("tooltip")).getByText("Comparing inventory"),
     ).toBeInTheDocument();
 
     const verdictGraph = makeGraph("verdict");
     rerenderCanvas({ graph: verdictGraph, phase: "verdict" });
 
     const tooltip = screen.getByRole("tooltip");
-    expect(within(tooltip).getByText("Verdict ready")).toBeInTheDocument();
-    expect(within(tooltip).queryByText("Scanning inventory")).not.toBeInTheDocument();
+    expect(within(tooltip).getByText("Result ready")).toBeInTheDocument();
+    expect(within(tooltip).queryByText("Comparing inventory")).not.toBeInTheDocument();
     expect(graphNode(container, "ghost")).toBe(originalGhost);
   });
 

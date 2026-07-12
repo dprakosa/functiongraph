@@ -7,8 +7,8 @@ export function inventoryStatusCopy(inventory: ActiveInventoryState): {
   switch (inventory.status) {
     case "guest":
       return {
-        label: "Guest inventory",
-        detail: `${inventory.items.length} bundled items · examples stay offline`,
+        label: "Starter household",
+        detail: `${inventory.items.length} everyday items`,
       };
     case "loading":
       return { label: "Personal inventory", detail: "Loading your confirmed items" };
@@ -25,9 +25,7 @@ export function inventoryStatusCopy(inventory: ActiveInventoryState): {
 }
 
 /**
- * Compact inventory status + the reserved photo action slot. The
- * #photo-action-slot anchor and data attributes are load-bearing (the empty
- * inventory state links to it; the photo feature will mount here).
+ * Compact inventory status shown above the graph.
  */
 export function InventoryStatus({
   inventory,
@@ -38,7 +36,7 @@ export function InventoryStatus({
   return (
     <section
       className="flex items-center justify-between gap-3"
-      aria-label="Inventory status and photo action"
+      aria-label="Inventory status"
     >
       <div
         className="flex min-w-0 items-center gap-2"
@@ -61,26 +59,6 @@ export function InventoryStatus({
             {status.label}
           </strong>
           <small className="truncate text-[11px] text-muted">{status.detail}</small>
-        </span>
-      </div>
-      <div
-        className="shrink-0"
-        id="photo-action-slot"
-        data-slot="photo-action"
-        tabIndex={-1}
-      >
-        <button
-          className="flex items-center gap-1.5 rounded-control border border-hairline bg-wash px-2.5 py-1.5 text-[11px] font-medium text-body"
-          type="button"
-          disabled
-        >
-          Add from photo
-          <small className="text-[9px] font-semibold tracking-wide text-faint uppercase">
-            Coming next
-          </small>
-        </button>
-        <span className="sr-only">
-          Photo capture is reserved here and will be enabled by the photo inventory feature.
         </span>
       </div>
     </section>

@@ -52,7 +52,7 @@ export async function evaluate(
   } catch {
     throw new EvaluateFailure(
       "the evaluation service didn't respond",
-      "check your connection, or tap an example — those never touch the network",
+      "check your connection or choose one of the suggested products",
     );
   }
 
@@ -67,7 +67,7 @@ export async function evaluate(
     const failed = payload as { error?: string; hint?: string } | undefined;
     throw new EvaluateFailure(
       failed?.error ?? "evaluation failed",
-      failed?.hint ?? "tap an example — those never touch the network",
+      failed?.hint ?? "choose one of the suggested products and try again",
     );
   }
   const result = payload as EvaluateResult;

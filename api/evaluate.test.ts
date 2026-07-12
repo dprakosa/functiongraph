@@ -51,7 +51,7 @@ describe("POST /api/evaluate production wrapper", () => {
     expect(status).toHaveBeenCalledWith(500);
     expect(json).toHaveBeenCalledWith({
       error: "evaluation failed unexpectedly",
-      hint: "tap an example — those never touch the network",
+      hint: "choose one of the suggested products and try again",
     });
   });
 });

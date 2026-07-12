@@ -1,6 +1,6 @@
-# FunctionGraph
+# Subgraph
 
-FunctionGraph is an anti-redundancy purchase copilot. It decomposes a product
+Subgraph is an anti-redundancy purchase copilot. It decomposes a product
 into capabilities, compares them with a structured inventory, and shows what is
 already covered and what is genuinely new in a live force-directed graph and
 verdict checklist.
@@ -22,7 +22,7 @@ signed-in account.
 
 Visual implementation follows [DESIGN.md](./DESIGN.md), which applies the
 Atlassian Design System (tokens via `@atlaskit/tokens`, light theme) to
-FunctionGraph's graph-first layout while keeping the fixed coral/green semantic
+Subgraph's graph-first layout while keeping the fixed coral/green semantic
 colour law. `PDD.md` remains higher precedence whenever the two documents
 differ.
 

@@ -92,7 +92,7 @@ describe("POST /api/evaluate authentication boundary", () => {
   it("returns an actionable 401 and never reaches the handler without a session", async () => {
     const body = {
       error: "sign in to evaluate a live product",
-      hint: "sign in and try again, or tap an example — those never touch the network",
+      hint: "sign in and try again, or choose one of the suggested products",
     };
     vi.mocked(authenticateEvaluateRequest).mockResolvedValue({
       ok: false,

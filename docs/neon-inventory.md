@@ -1,6 +1,6 @@
 # Clerk-scoped Neon inventory
 
-FunctionGraph stores only confirmed personal inventory fields in Neon Postgres.
+Subgraph stores only confirmed personal inventory fields in Neon Postgres.
 The Vercel Marketplace resource is named `functiongraph-inventory`; Neon Auth is
 disabled because Clerk remains the identity authority.
 

@@ -5,10 +5,7 @@ import {
   appReducer,
   initialState,
   type AppState,
-  type Impact,
 } from "./appReducer";
-
-const INITIAL_IMPACT: Impact = { dollarsKept: 10, kgAvoided: 0.18 };
 
 const RESULT: EvaluateResult = {
   name: "Convection countertop oven",
@@ -61,7 +58,7 @@ const NO_MATCH_ROUTE: RouteResult = {
 };
 
 function evaluatedState(route = MATCHED_ROUTE): AppState {
-  return appReducer(initialState(INITIAL_IMPACT), {
+  return appReducer(initialState(), {
     type: "EVALUATE_SUCCESS",
     result: RESULT,
     route,
@@ -71,7 +68,7 @@ function evaluatedState(route = MATCHED_ROUTE): AppState {
 
 describe("appReducer", () => {
   it("walks the normal evaluation, dive, verdict, and row-pulse transitions", () => {
-    const initial = initialState(INITIAL_IMPACT);
+    const initial = initialState();
     const started = appReducer(initial, {
       type: "EVALUATE_START",
       text: "countertop oven",
@@ -129,7 +126,7 @@ describe("appReducer", () => {
   });
 
   it("jumps directly to the correct verdict view under reduced motion", () => {
-    const matched = appReducer(initialState(INITIAL_IMPACT), {
+    const matched = appReducer(initialState(), {
       type: "EVALUATE_SUCCESS",
       result: RESULT,
       route: MATCHED_ROUTE,
@@ -142,7 +139,7 @@ describe("appReducer", () => {
       view: { level: "room", domain: "kitchen" },
     });
 
-    const noMatch = appReducer(initialState(INITIAL_IMPACT), {
+    const noMatch = appReducer(initialState(), {
       type: "EVALUATE_SUCCESS",
       result: RESULT,
       route: NO_MATCH_ROUTE,
@@ -184,7 +181,7 @@ describe("appReducer", () => {
       view: { level: "home" },
     });
 
-    const resting = initialState(INITIAL_IMPACT);
+    const resting = initialState();
     expect(
       appReducer(resting, { type: "REDUCED_MOTION_ENABLED" }),
     ).toBe(resting);
@@ -203,7 +200,7 @@ describe("appReducer", () => {
       view: { level: "home" },
     });
 
-    const resting = initialState(INITIAL_IMPACT);
+    const resting = initialState();
     expect(appReducer(resting, { type: "SCAN_STARTED" })).toBe(resting);
     expect(appReducer(resting, { type: "ROUTE_SHOWN" })).toBe(resting);
     expect(appReducer(resting, { type: "EVIDENCE_REVEALED" })).toBe(resting);
@@ -211,7 +208,7 @@ describe("appReducer", () => {
   });
 
   it("enters rooms only at rest, toggles one item expansion at a time, and goes home", () => {
-    const initial = initialState(INITIAL_IMPACT);
+    const initial = initialState();
     const room = appReducer(initial, {
       type: "ROOM_ENTERED",
       domain: "kitchen",
@@ -252,11 +249,10 @@ describe("appReducer", () => {
       result: null,
       expandedItemId: null,
       toast: null,
-      impact: INITIAL_IMPACT,
     });
   });
 
-  it("opens the reason flow and Buy anyway clears the evaluation without changing view or impact", () => {
+  it("opens the reason flow and Buy anyway clears the evaluation without changing view", () => {
     const verdict: AppState = {
       ...evaluatedState(),
       phase: "verdict",
@@ -277,11 +273,10 @@ describe("appReducer", () => {
       result: null,
       stillNeedItOpen: false,
       reason: "",
-      impact: INITIAL_IMPACT,
     });
   });
 
-  it("Skip preserves the current room and existing impact while adding the purchase delta", () => {
+  it("Skip clears the evaluation and preserves the current room", () => {
     const verdict: AppState = {
       ...evaluatedState(),
       phase: "verdict",
@@ -293,9 +288,7 @@ describe("appReducer", () => {
       phase: "resting",
       view: { level: "room", domain: "kitchen" },
       result: null,
-      impact: { dollarsKept: 139 },
     });
-    expect(skipped.impact.kgAvoided).toBeCloseTo(0.18 + 129 * 0.018, 10);
   });
 
   it("stores, dismisses, and clears evaluation errors and notices", () => {
@@ -311,7 +304,7 @@ describe("appReducer", () => {
     });
     expect(appReducer(failed, { type: "ERROR_DISMISSED" }).error).toBeNull();
 
-    const noticed = appReducer(initialState(INITIAL_IMPACT), {
+    const noticed = appReducer(initialState(), {
       type: "UNSCANNED_TAPPED",
       message: "scan this room",
     });

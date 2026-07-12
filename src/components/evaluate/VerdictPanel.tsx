@@ -5,7 +5,6 @@ import type { AppAction, AppState } from "../../state/appReducer";
 import { appendDecision } from "../../state/decisionStore";
 import { Badge } from "../ui/Badge";
 import { CoverageRing } from "../ui/CoverageRing";
-import { StatCard } from "../ui/StatCard";
 import { VerdictRow } from "./VerdictRow";
 
 function formatPrice(price: number): string {
@@ -51,9 +50,7 @@ export interface VerdictPanelProps {
 }
 
 /**
- * The verdict rail. Section order per DESIGN.md: product, coverage,
- * checklist, delta economics, alternative, actions. All user-facing strings
- * come from copy.ts (CNT-4) — do not rephrase them.
+ * The verdict rail: product, coverage, checklist, alternative, and actions.
  */
 export function VerdictPanel({ state, dispatch }: VerdictPanelProps) {
   const result = state.result;
@@ -64,17 +61,6 @@ export function VerdictPanel({ state, dispatch }: VerdictPanelProps) {
   const isApproval = verdict.coveredCount === 0;
   const coveredRows = verdict.rows.filter((row) => row.covered);
   const newRows = verdict.rows.filter((row) => !row.covered);
-  const delta =
-    result.price == null
-      ? null
-      : verdict.newCapabilities.length === 0
-        ? copy.deltaNothing(result.price)
-        : copy.deltaNew(
-            result.price,
-            verdict.newCapabilities.length,
-            verdict.pricePerNewCapability!,
-          );
-
   const recordDecision = (choice: "skipped" | "bought", reason: string | null) => {
     appendDecision({
       product: result.name,
@@ -144,31 +130,13 @@ export function VerdictPanel({ state, dispatch }: VerdictPanelProps) {
             </div>
           </section>
 
-          <div className="grid grid-cols-2 gap-2">
-            <StatCard
-              label="Genuinely new"
-              value={verdict.newCapabilities.length}
-              detail={
-                verdict.newCapabilities.length === 1 ? "capability" : "capabilities"
-              }
-            />
-            <StatCard
-              label="Per new capability"
-              value={
-                verdict.pricePerNewCapability != null
-                  ? `${formatPrice(verdict.pricePerNewCapability)} each`
-                  : "—"
-              }
-            />
-          </div>
-
           <section className="grid gap-3" aria-labelledby="checklist-title">
             <div className="flex items-baseline justify-between gap-2">
               <h3
                 id="checklist-title"
                 className="m-0 text-[13px] font-semibold text-ink"
               >
-                Capability checklist
+                What it can do
               </h3>
               <span className="text-[10.5px] text-faint">
                 Tap a row to trace its edge
@@ -188,24 +156,17 @@ export function VerdictPanel({ state, dispatch }: VerdictPanelProps) {
             />
           </section>
 
-          {(delta || result.altSuggestion) && (
+          {result.altSuggestion && (
             <section
               className="grid gap-2 rounded-card border border-hairline bg-wash p-3"
-              aria-label="Delta economics"
+              aria-label="Alternative suggestion"
             >
-              {delta && (
-                <p className="text-metric m-0 text-[13px] font-semibold text-ink">
-                  {delta}
-                </p>
-              )}
-              {result.altSuggestion && (
-                <p className="m-0 grid gap-0.5 text-xs leading-relaxed text-body">
-                  <span className="text-[10.5px] font-semibold tracking-wide text-muted uppercase">
-                    Acquire only the delta
-                  </span>
-                  {result.altSuggestion}
-                </p>
-              )}
+              <p className="m-0 grid gap-0.5 text-xs leading-relaxed text-body">
+                <span className="text-[10.5px] font-semibold tracking-wide text-muted uppercase">
+                  A simpler option
+                </span>
+                {result.altSuggestion}
+              </p>
             </section>
           )}
         </div>
@@ -252,7 +213,7 @@ export function VerdictPanel({ state, dispatch }: VerdictPanelProps) {
                 value={state.reason}
                 maxLength={240}
                 autoFocus
-                placeholder="A capability or situation that matters to you"
+                placeholder="What makes this purchase useful for you?"
                 onChange={(event) =>
                   dispatch({ type: "REASON_CHANGED", reason: event.target.value })
                 }

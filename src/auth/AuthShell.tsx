@@ -15,7 +15,7 @@ interface AuthShellProps {
   children: ReactNode;
 }
 
-interface GuestDemoStatusProps {
+interface GuestStatusProps {
   unavailable?: boolean;
 }
 
@@ -27,6 +27,7 @@ interface ViewerState {
 
 const ViewerStateContext = createContext<ViewerState>({ mode: "guest" });
 const AuthStatusContext = createContext<ReactNode>(null);
+const AuthActionContext = createContext<ReactNode>(null);
 
 export function useViewerState(): ViewerState {
   return useContext(ViewerStateContext);
@@ -55,22 +56,31 @@ export function AuthStatusSlot() {
   return <>{useContext(AuthStatusContext)}</>;
 }
 
+/** A compact account control for the marketing navigation. */
+export function AuthActionSlot() {
+  return <>{useContext(AuthActionContext)}</>;
+}
+
 function AuthFrame({
   mode,
   status,
+  action = null,
   children,
 }: {
   mode: ViewerMode;
   status: ReactNode;
+  action?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <ViewerStateProvider mode={mode}>
-      <AuthStatusContext.Provider value={status}>
-        <div className="contents" data-viewer-mode={mode}>
-          {children}
-        </div>
-      </AuthStatusContext.Provider>
+      <AuthActionContext.Provider value={action}>
+        <AuthStatusContext.Provider value={status}>
+          <div className="contents" data-viewer-mode={mode}>
+            {children}
+          </div>
+        </AuthStatusContext.Provider>
+      </AuthActionContext.Provider>
     </ViewerStateProvider>
   );
 }
@@ -78,11 +88,11 @@ function AuthFrame({
 function StatusCopy({
   label,
   children,
-  tone = "demo",
+  tone = "default",
 }: {
   label: string;
   children: ReactNode;
-  tone?: "demo" | "live" | "loading";
+  tone?: "default" | "live" | "loading";
 }) {
   return (
     <div className="grid gap-1">
@@ -107,17 +117,17 @@ function StatusCopy({
   );
 }
 
-export function GuestDemoStatus({ unavailable = false }: GuestDemoStatusProps) {
+export function GuestStatus({ unavailable = false }: GuestStatusProps) {
   return (
     <aside
       className="grid gap-2"
       aria-label="Account status"
-      data-auth-state="guest-demo"
+      data-auth-state="guest"
     >
-      <StatusCopy label="Guest demo">
+      <StatusCopy label="Starter inventory">
         {unavailable
-          ? "Account services are unavailable. The three examples still run fully offline."
-          : "Accounts aren't configured here. The three examples run fully offline."}
+          ? "Account access is temporarily unavailable. You can still explore the starter household."
+          : "Explore a ready-to-use household inventory."}
       </StatusCopy>
     </aside>
   );
@@ -145,11 +155,11 @@ function SignedOutStatus() {
       aria-label="Account status"
       data-auth-state="signed-out"
     >
-      <StatusCopy label="Guest demo">
-        The three examples work offline. Sign in for live product checks.
+      <StatusCopy label="Starter inventory">
+        Sign in to compare products with the items in your own home.
       </StatusCopy>
       <div className="flex gap-2" aria-label="Account actions">
-        <SignInButton mode="modal">
+        <SignInButton mode="modal" fallbackRedirectUrl="/graph">
           <button
             className="rounded-control bg-accent px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-accent-hover active:bg-accent-pressed"
             type="button"
@@ -157,7 +167,7 @@ function SignedOutStatus() {
             Sign in
           </button>
         </SignInButton>
-        <SignUpButton mode="modal">
+        <SignUpButton mode="modal" fallbackRedirectUrl="/graph">
           <button
             className="rounded-control border border-hairline bg-white px-3 py-1.5 text-xs font-semibold text-body transition-colors hover:bg-hairline-soft"
             type="button"
@@ -177,8 +187,8 @@ function SignedInStatus() {
       aria-label="Account status"
       data-auth-state="signed-in"
     >
-      <StatusCopy label="Live enabled" tone="live">
-        Signed in for live product checks. Offline examples remain available.
+      <StatusCopy label="Your account" tone="live">
+        Your product checks use the inventory saved to this account.
       </StatusCopy>
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-medium text-muted">Account</span>
@@ -186,6 +196,23 @@ function SignedInStatus() {
       </div>
     </aside>
   );
+}
+
+function SignedOutAction() {
+  return (
+    <SignInButton mode="modal" fallbackRedirectUrl="/graph">
+      <button
+        className="rounded-control border border-hairline bg-white px-3.5 py-2 text-[13px] font-semibold text-body transition-colors hover:bg-hairline-soft hover:text-ink"
+        type="button"
+      >
+        Sign in
+      </button>
+    </SignInButton>
+  );
+}
+
+function SignedInAction() {
+  return <UserButton />;
 }
 
 /**
@@ -197,7 +224,7 @@ export function AuthShell({ publishableKey, children }: AuthShellProps) {
 
   if (!configuredKey) {
     return (
-      <AuthFrame mode="guest" status={<GuestDemoStatus />}>
+      <AuthFrame mode="guest" status={<GuestStatus />}>
         {children}
       </AuthFrame>
     );
@@ -212,18 +239,26 @@ export function AuthShell({ publishableKey, children }: AuthShellProps) {
       </ClerkLoading>
       <ClerkLoaded>
         <Show when="signed-out">
-          <AuthFrame mode="guest" status={<SignedOutStatus />}>
+          <AuthFrame
+            mode="guest"
+            status={<SignedOutStatus />}
+            action={<SignedOutAction />}
+          >
             {children}
           </AuthFrame>
         </Show>
         <Show when="signed-in">
-          <AuthFrame mode="signed-in" status={<SignedInStatus />}>
+          <AuthFrame
+            mode="signed-in"
+            status={<SignedInStatus />}
+            action={<SignedInAction />}
+          >
             {children}
           </AuthFrame>
         </Show>
       </ClerkLoaded>
       <ClerkFailed>
-        <AuthFrame mode="guest" status={<GuestDemoStatus unavailable />}>
+        <AuthFrame mode="guest" status={<GuestStatus unavailable />}>
           {children}
         </AuthFrame>
       </ClerkFailed>

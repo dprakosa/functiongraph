@@ -38,7 +38,7 @@ describe("POST /api/evaluate handler", () => {
     expect(result.cached).toBe(true);
     expect(result.name).toBe("Convection countertop oven");
     expect(result.verdict.coveredCount).toBe(4);
-    expect(Math.round(result.verdict.coverage * 100)).toBe(75);
+    expect(Math.round(result.verdict.coverage * 100)).toBe(74);
   });
 
   it("rescans cached decompositions against each caller's inventory", async () => {
@@ -241,7 +241,7 @@ describe("POST /api/evaluate handler", () => {
     );
     expect(status).toBe(503);
     expect((body as EvaluateError).hint).toBe(
-      "tap an example — those never touch the network",
+      "choose one of the suggested products and try again",
     );
   });
 });

@@ -153,18 +153,18 @@ function formatQuantity(quantity: number | null | undefined): string {
 
 function phaseLabel(phase: Phase): string {
   switch (phase) {
+    case "resting":
+      return "Ready";
     case "extracting":
-      return "Extracting capabilities";
+      return "Reading product";
     case "scanning":
-      return "Scanning inventory";
+      return "Comparing inventory";
     case "routing":
-      return "Routing to evidence";
+      return "Finding matches";
     case "settling":
-      return "Settling graph";
+      return "Preparing result";
     case "verdict":
-      return "Verdict ready";
-    default:
-      return titleCase(phase.replaceAll("-", " "));
+      return "Result ready";
   }
 }
 

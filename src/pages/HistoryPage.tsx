@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Badge } from "../components/ui/Badge";
 import { StatCard } from "../components/ui/StatCard";
-import { KG_PER_DOLLAR } from "../lib/copy";
 import { RouteLink } from "../routing/RouteLink";
 import { readDecisions, type PurchaseDecision } from "../state/decisionStore";
 
@@ -58,10 +57,10 @@ function DecisionRow({ decision }: { decision: PurchaseDecision }) {
 export function HistoryPage() {
   const [decisions] = useState<PurchaseDecision[]>(() => readDecisions());
 
-  const dollarsKept = decisions
-    .filter((decision) => decision.choice === "skipped")
-    .reduce((sum, decision) => sum + (decision.price ?? 0), 0);
-  const kgAvoided = dollarsKept * KG_PER_DOLLAR;
+  const skippedCount = decisions.filter(
+    (decision) => decision.choice === "skipped",
+  ).length;
+  const boughtCount = decisions.length - skippedCount;
 
   return (
     <main
@@ -78,7 +77,7 @@ export function HistoryPage() {
           Decision history
         </h1>
         <p className="m-0 text-[13px] text-muted">
-          Every skip and buy-anyway you have recorded on this device.
+          Every purchase decision you have recorded on this device.
         </p>
       </header>
 
@@ -100,22 +99,22 @@ export function HistoryPage() {
         <>
           <section
             className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3"
-            aria-label="Impact summary"
+            aria-label="Decision summary"
           >
-            <StatCard
-              label="Kept in your pocket"
-              value={formatPrice(dollarsKept)}
-              detail="from skipped purchases"
-            />
             <StatCard
               label="Decisions recorded"
               value={decisions.length}
               detail="on this device"
             />
             <StatCard
-              label="Landfill avoided"
-              value={`${kgAvoided.toFixed(1)} kg`}
-              detail="estimated"
+              label="Skipped"
+              value={skippedCount}
+              detail="purchases"
+            />
+            <StatCard
+              label="Still bought"
+              value={boughtCount}
+              detail="purchases"
             />
           </section>
 

@@ -1,4 +1,4 @@
-# FunctionGraph — Product & System Specification
+# Subgraph — Product & System Specification
 
 **Status:** v1.3 · source of truth
 **Precedence:** Where this document conflicts with README.md, CLAUDE.md,
@@ -15,7 +15,7 @@ Requirement IDs (PR-1, ALG-3, …) are stable and citable.
 
 ## 1. Product definition
 
-FunctionGraph is an anti-redundancy purchase copilot. It decomposes a
+Subgraph is an anti-redundancy purchase copilot. It decomposes a
 product a person is considering into **functional capabilities**, matches
 those against a structured inventory of what they already own, and renders
 the overlap as a live force graph plus a verdict checklist — so the person
@@ -526,7 +526,7 @@ per SM-3 · caps per product 3–8 · input 3–1500 chars.
 | Basic photo review and persistent confirmation (human sign-off, 2026-07-11) | capture makes inventory creation practical, but uncertain detection requires selection plus editable name, room, and quantity before a transactional save; capabilities remain read-only in this release |
 | Ephemeral photo and review data (human sign-off, 2026-07-11) | persistence needs only the confirmed canonical item; raw images, provider output, evidence, confidence, warnings, and drafts create unnecessary privacy and retention risk and are discarded |
 | Saved-item inspector and all-node tooltips (human sign-off, 2026-07-11) | owners need to correct or delete confirmed items, and every graph node needs accessible contextual explanation without changing graph physics or making hover mandatory |
-| Clean-light-SaaS visual re-platform: Tailwind tokens replace ADS, slate/emerald verdict palette replaces coral/green (human sign-off, 2026-07-12) | full UI overhaul approved by the owner: a marketing landing, an app shell (Evaluate, Inventory, History, Settings), and FunctionGraph-owned `@theme` tokens replace the Atlassian Design System edition of DESIGN.md; the VIS-1 colour assignments are superseded — covered evidence now recedes as slate gray with a check icon while genuinely-new evidence pops as emerald with a sparkle, indigo is interaction chrome only, and amber marks the skip recommendation — because coral read as an error state and two saturated speaking colours competed for attention; the two-speaking-colours principle, non-colour covered/new cues, amber restraint, and all VIS-2..8 behaviours (edge IDs, pulse budget, choreography, reduced motion) stand unchanged; decisions (Skip / Bought anyway) additionally persist to browser localStorage for the History page, never to the server |
+| Clean-light-SaaS visual re-platform: Tailwind tokens replace ADS, slate/emerald verdict palette replaces coral/green (human sign-off, 2026-07-12) | full UI overhaul approved by the owner: a marketing landing, an app shell (Evaluate, Inventory, History, Settings), and Subgraph-owned `@theme` tokens replace the Atlassian Design System edition of DESIGN.md; the VIS-1 colour assignments are superseded — covered evidence now recedes as slate gray with a check icon while genuinely-new evidence pops as emerald with a sparkle, indigo is interaction chrome only, and amber marks the skip recommendation — because coral read as an error state and two saturated speaking colours competed for attention; the two-speaking-colours principle, non-colour covered/new cues, amber restraint, and all VIS-2..8 behaviours (edge IDs, pulse budget, choreography, reduced motion) stand unchanged; decisions (Skip / Bought anyway) additionally persist to browser localStorage for the History page, never to the server |
 
 ---
 

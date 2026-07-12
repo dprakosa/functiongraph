@@ -76,7 +76,7 @@ describe("authenticateEvaluateRequest", () => {
 
     expect(outcome).toMatchObject({ ok: false, status: 503 });
     if (!outcome.ok) {
-      expect(outcome.body.hint).toContain("example");
+      expect(outcome.body.hint).toContain("suggested products");
     }
     expect(mocks.createClerkClient).not.toHaveBeenCalled();
   });
@@ -123,7 +123,7 @@ describe("authenticateEvaluateRequest", () => {
     if (!outcome.ok) {
       expect(outcome.body).toEqual({
         error: "sign in to evaluate a live product",
-        hint: "sign in and try again, or tap an example — those never touch the network",
+        hint: "sign in and try again, or choose one of the suggested products",
       });
     }
   });

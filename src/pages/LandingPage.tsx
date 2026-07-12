@@ -28,7 +28,7 @@ export function LandingPage() {
           <div className="mx-auto grid w-full max-w-6xl justify-items-center gap-6 px-4 pt-16 pb-10 text-center md:px-6 md:pt-24">
             <p className="m-0 flex items-center gap-1.5 rounded-full border border-hairline bg-white/70 px-3 py-1 text-xs font-medium text-body shadow-xs">
               <span aria-hidden="true" className="text-accent">✦</span>
-              Capability-level purchase decisions
+              Buy with a clearer picture
             </p>
             <h1
               id="landing-title"
@@ -39,15 +39,15 @@ export function LandingPage() {
               See what a purchase adds—not what it repeats.
             </h1>
             <p className="m-0 max-w-xl text-base leading-relaxed text-body md:text-lg">
-              FunctionGraph maps a product against what you already own, so the
-              genuinely new functions stay visible before you spend.
+              Subgraph compares a product with what you already own, so you can
+              see what is already covered and what would actually be new.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3">
               <RouteLink
                 to="/graph"
                 className="rounded-control bg-accent px-5 py-3 text-[15px] font-semibold text-white no-underline shadow-float transition-colors hover:bg-accent-hover active:bg-accent-pressed"
               >
-                Open the graph <span aria-hidden="true">→</span>
+                Check a product <span aria-hidden="true">→</span>
               </RouteLink>
               <a
                 href="#how-it-works"
@@ -57,8 +57,8 @@ export function LandingPage() {
               </a>
             </div>
             <small className="text-xs text-muted">
-              No account required — guest mode includes a 36-item home and three
-              examples that run fully offline.
+              Explore with a ready-to-use household inventory. Sign in to use
+              your own.
             </small>
           </div>
 
