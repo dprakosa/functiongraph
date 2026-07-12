@@ -1,9 +1,10 @@
 # Inventory photo scan
 
 `POST /api/inventory/scan` turns one household photo into an ephemeral draft
-inventory. The endpoint is backend-only: it does not provide a camera UI,
-confirm candidates, update the bundled `inventory.json`, or persist scan data.
-Candidates can be assigned to any of the four active rooms—Kitchen,
+inventory. The signed-in **Add from photo** interface calls this endpoint,
+lets the owner review candidates, then uses the separate inventory endpoint to
+save only explicitly confirmed items. Scanning alone never updates the bundled
+`inventory.json` or persists scan data. Candidates can be assigned to any of the four active rooms—Kitchen,
 Electronics, Garage, or Bathroom—or left unclassified.
 
 ## Request

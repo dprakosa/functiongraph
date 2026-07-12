@@ -69,10 +69,10 @@ Section sequence: sticky blur nav (border appears on scroll) → hero (eyebrow c
 
 ### Evaluate surface (`src/App.tsx` + `src/components/evaluate/`)
 
-- Top bar inside the canvas column: page title, inventory status + reserved photo action (`#photo-action-slot`), the command bar, inline error banner, and the capability chip stream during choreography.
+- Top bar inside the canvas column: page title, inventory status + live photo action (`#photo-action-slot`), the command bar, inline error banner, and the capability chip stream during choreography.
 - Command bar (`ProductCommandBar`): search-glyph input styled as a command field, ⌘K/Ctrl-K focuses it, integrated accent submit, the three exact demo chips (`Convection countertop oven — $129`, `4th USB-C cable — $15`, `Mini camera drone — $89`) always visible. Errors are friendly inline text; no spinner (results are fetched before choreography starts).
 - Graph canvas: full-bleed, dotted `--canvas-dot` background, all remaining viewport. Chrome floats as blurred pills: view label + back control (top-left), legend (top-right), hint pill (bottom-centre), route/notice toasts. Never wrap the graph in a dashboard grid.
-- Contextual rail: one at a time (verdict, item inspector; photo review later), 380px on ≥1024px with `border-l`, independent scroll, `--animate-panel-in` entrance; below 1024px it stacks under a fixed-height canvas.
+- Contextual rail: one at a time (verdict or item inspector), 380px on ≥1024px with `border-l`, independent scroll, `--animate-panel-in` entrance; below 1024px it stacks under a fixed-height canvas. Photo capture and review use the shared modal so the same flow is available from both Evaluate and Inventory.
 
 ### Verdict rail (`VerdictPanel`)
 
@@ -89,7 +89,7 @@ On Skip and Buy-anyway, the decision is appended to localStorage (`src/state/dec
 
 ### Inventory, History, Settings pages
 
-- **Inventory** (`src/pages/InventoryPage.tsx`): items grouped by room in hairline card lists; capability chips per item; signed-in accounts get inline edit (name/room/quantity via the existing PATCH endpoint) and confirm-by-name delete, refreshing through the inventory hook's `retry()`. Guests see the bundled home read-only with an explainer. All five inventory states (guest/loading/error/empty/populated) stay visually explicit; the disabled "Add from photo — coming next" affordance remains.
+- **Inventory** (`src/pages/InventoryPage.tsx`): items grouped by room in hairline card lists; capability chips per item; signed-in accounts get inline edit (name/room/quantity via the existing PATCH endpoint) and confirm-by-name delete, refreshing through the inventory hook's `retry()`. Guests see the bundled home read-only with an explainer. All five inventory states (guest/loading/error/empty/populated) stay visually explicit. The shared **Add from photo** flow scans an ephemeral JPEG, PNG, or WebP, presents editable candidates for review, and refreshes the confirmed inventory after an explicit save.
 - **History** (`src/pages/HistoryPage.tsx`): stat cards ($ kept, decision count, kg avoided via `KG_PER_DOLLAR`) above the decision list (product, price, date, coverage, Skipped/Bought-anyway badge, reason). Empty state routes to Evaluate.
 - **Settings** (`src/pages/SettingsPage.tsx`): account (AuthStatusSlot), local-data section (clear history with inline confirm + count), about.
 

@@ -11,6 +11,7 @@ import {
 } from "../inventory/useActiveInventory";
 import type { Item } from "../lib/types";
 import { RouteLink } from "../routing/RouteLink";
+import { PhotoInventoryFlow } from "../components/inventory/PhotoInventoryFlow";
 
 const DOMAINS = ["kitchen", "electronics", "garage", "bathroom"] as const;
 
@@ -289,9 +290,8 @@ function InventoryBody({
           Your account starts empty
         </h2>
         <p className="m-0 max-w-sm text-[13px] leading-relaxed text-muted">
-          Confirmed items will appear here and build your capability graph. The
-          photo scan flow arrives next — demo items are never substituted into
-          your account.
+          Use Add from photo to scan what you own and build your capability
+          graph. Demo items are never substituted into your account.
         </p>
       </div>
     );
@@ -330,7 +330,7 @@ function InventoryBody({
 
 export function InventoryPage() {
   const viewer = useViewerState();
-  const inventory = useActiveInventory(viewer.mode);
+  const inventory = useActiveInventory(viewer.mode, viewer.identityKey);
   const itemCount = inventory.items?.length ?? 0;
 
   return (
@@ -356,16 +356,10 @@ export function InventoryPage() {
                 : "The objects your evaluations are scored against"}
           </p>
         </div>
-        <button
-          className="flex items-center gap-1.5 rounded-control border border-hairline bg-white px-3 py-2 text-xs font-medium text-body shadow-xs"
-          type="button"
-          disabled
-        >
-          Add from photo
-          <small className="text-[9px] font-semibold tracking-wide text-faint uppercase">
-            Coming next
-          </small>
-        </button>
+        <PhotoInventoryFlow
+          inventory={inventory}
+          identityKey={viewer.identityKey}
+        />
       </header>
 
       {inventory.status === "guest" && (

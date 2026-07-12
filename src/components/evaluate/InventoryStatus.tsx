@@ -1,4 +1,5 @@
 import type { ActiveInventoryState } from "../../inventory/useActiveInventory";
+import { PhotoInventoryFlow } from "../inventory/PhotoInventoryFlow";
 
 export function inventoryStatusCopy(inventory: ActiveInventoryState): {
   label: string;
@@ -24,15 +25,13 @@ export function inventoryStatusCopy(inventory: ActiveInventoryState): {
   }
 }
 
-/**
- * Compact inventory status + the reserved photo action slot. The
- * #photo-action-slot anchor and data attributes are load-bearing (the empty
- * inventory state links to it; the photo feature will mount here).
- */
+/** Compact inventory status + the live photo-inventory entry point. */
 export function InventoryStatus({
   inventory,
+  identityKey,
 }: {
   inventory: ActiveInventoryState;
+  identityKey?: string | null;
 }) {
   const status = inventoryStatusCopy(inventory);
   return (
@@ -63,26 +62,12 @@ export function InventoryStatus({
           <small className="truncate text-[11px] text-muted">{status.detail}</small>
         </span>
       </div>
-      <div
-        className="shrink-0"
+      <PhotoInventoryFlow
+        inventory={inventory}
+        identityKey={identityKey}
+        compact
         id="photo-action-slot"
-        data-slot="photo-action"
-        tabIndex={-1}
-      >
-        <button
-          className="flex items-center gap-1.5 rounded-control border border-hairline bg-wash px-2.5 py-1.5 text-[11px] font-medium text-body"
-          type="button"
-          disabled
-        >
-          Add from photo
-          <small className="text-[9px] font-semibold tracking-wide text-faint uppercase">
-            Coming next
-          </small>
-        </button>
-        <span className="sr-only">
-          Photo capture is reserved here and will be enabled by the photo inventory feature.
-        </span>
-      </div>
+      />
     </section>
   );
 }

@@ -1,8 +1,8 @@
 # Photo inventory Preview smoke test
 
 This opt-in backend smoke test proves the real Clerk → Vercel Function →
-OpenAI vision → Neon inventory → evaluation path without interacting with the
-unfinished photo-review UI. Ordinary `npm test` remains deterministic and
+OpenAI vision → Neon inventory → evaluation path independently of the
+browser photo-review UI. Ordinary `npm test` remains deterministic and
 never calls Clerk, OpenAI, Vercel, or Neon.
 
 ## Safe fixture

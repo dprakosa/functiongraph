@@ -86,7 +86,7 @@ function GraphLegend() {
 
 export default function GraphPage() {
   const viewer = useViewerState();
-  const activeInventory = useActiveInventory(viewer.mode);
+  const activeInventory = useActiveInventory(viewer.mode, viewer.identityKey);
   const activeItems = activeInventory.items ?? [];
   const unscannedRooms =
     activeInventory.status === "guest" ? guestInventory.unscannedRooms : [];
@@ -193,6 +193,13 @@ export default function GraphPage() {
       return;
     }
     if (node.kind === "room-unscanned") {
+      const photoAction = document.querySelector<HTMLButtonElement>(
+        '#photo-action-slot button[aria-haspopup="dialog"]',
+      );
+      if (photoAction && !photoAction.disabled) {
+        photoAction.click();
+        return;
+      }
       dispatch({ type: "UNSCANNED_TAPPED", message: copy.unscannedToast });
       return;
     }
@@ -227,7 +234,10 @@ export default function GraphPage() {
           >
             Evaluate a purchase
           </h1>
-          <InventoryStatus inventory={activeInventory} />
+          <InventoryStatus
+            inventory={activeInventory}
+            identityKey={viewer.identityKey}
+          />
         </div>
 
         <ProductCommandBar

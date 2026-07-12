@@ -7,6 +7,7 @@ import {
   SignInButton,
   SignUpButton,
   UserButton,
+  useAuth,
 } from "@clerk/react";
 import { createContext, useContext, type ReactNode } from "react";
 
@@ -23,9 +24,13 @@ export type ViewerMode = "guest" | "loading" | "signed-in";
 
 interface ViewerState {
   mode: ViewerMode;
+  identityKey: string | null;
 }
 
-const ViewerStateContext = createContext<ViewerState>({ mode: "guest" });
+const ViewerStateContext = createContext<ViewerState>({
+  mode: "guest",
+  identityKey: null,
+});
 const AuthStatusContext = createContext<ReactNode>(null);
 
 export function useViewerState(): ViewerState {
@@ -34,13 +39,15 @@ export function useViewerState(): ViewerState {
 
 export function ViewerStateProvider({
   mode,
+  identityKey = mode === "signed-in" ? "signed-in:test" : null,
   children,
 }: {
   mode: ViewerMode;
+  identityKey?: string | null;
   children: ReactNode;
 }) {
   return (
-    <ViewerStateContext.Provider value={{ mode }}>
+    <ViewerStateContext.Provider value={{ mode, identityKey }}>
       {children}
     </ViewerStateContext.Provider>
   );
@@ -57,15 +64,17 @@ export function AuthStatusSlot() {
 
 function AuthFrame({
   mode,
+  identityKey = null,
   status,
   children,
 }: {
   mode: ViewerMode;
+  identityKey?: string | null;
   status: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <ViewerStateProvider mode={mode}>
+    <ViewerStateProvider mode={mode} identityKey={identityKey}>
       <AuthStatusContext.Provider value={status}>
         <div className="contents" data-viewer-mode={mode}>
           {children}
@@ -188,6 +197,28 @@ function SignedInStatus() {
   );
 }
 
+function SignedInFrame({ children }: { children: ReactNode }) {
+  const { sessionId, userId } = useAuth();
+  if (!userId || !sessionId) {
+    return (
+      <AuthFrame mode="loading" status={<AuthLoadingStatus />}>
+        {children}
+      </AuthFrame>
+    );
+  }
+  const identityKey = `${userId}:${sessionId}`;
+
+  return (
+    <AuthFrame
+      mode="signed-in"
+      identityKey={identityKey}
+      status={<SignedInStatus />}
+    >
+      {children}
+    </AuthFrame>
+  );
+}
+
 /**
  * Keeps the application available regardless of Clerk configuration or load
  * state. Clerk components are never mounted without a non-blank key.
@@ -217,9 +248,7 @@ export function AuthShell({ publishableKey, children }: AuthShellProps) {
           </AuthFrame>
         </Show>
         <Show when="signed-in">
-          <AuthFrame mode="signed-in" status={<SignedInStatus />}>
-            {children}
-          </AuthFrame>
+          <SignedInFrame>{children}</SignedInFrame>
         </Show>
       </ClerkLoaded>
       <ClerkFailed>

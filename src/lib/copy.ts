@@ -29,5 +29,5 @@ export const copy = {
   reasonPrompt: "What's it for? teaches the graph",
   unscannedCta: "scan this room",
   unscannedToast:
-    "This room isn't scanned yet — the photo scanning interface is still on the roadmap. The four seeded rooms are live.",
+    "This demo room isn't scanned yet. Sign in and use Add from photo to build your own inventory.",
 };

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import inventoryFile from "../data/inventory.json";
 import type { ViewerMode } from "../auth/AuthShell";
 import type { InventoryFile, Item, OwnedInventoryItem } from "../lib/types";
@@ -40,9 +40,16 @@ function isOwnedInventoryItem(value: unknown): value is OwnedInventoryItem {
   );
 }
 
-export function useActiveInventory(viewerMode: ViewerMode): ActiveInventoryState {
+export function useActiveInventory(
+  viewerMode: ViewerMode,
+  identityKey?: string | null,
+): ActiveInventoryState {
+  const inventoryBoundary = `${viewerMode}:${identityKey ?? "anonymous"}`;
   const [requestVersion, setRequestVersion] = useState(0);
   const retry = useCallback(() => setRequestVersion((version) => version + 1), []);
+  const latestBoundaryRef = useRef(inventoryBoundary);
+  const requestBoundaryRef = useRef(inventoryBoundary);
+  latestBoundaryRef.current = inventoryBoundary;
   const [personalState, setPersonalState] = useState<PersonalInventoryState>({
     status: "loading",
     items: null,
@@ -53,6 +60,7 @@ export function useActiveInventory(viewerMode: ViewerMode): ActiveInventoryState
     if (viewerMode !== "signed-in") return;
 
     const controller = new AbortController();
+    requestBoundaryRef.current = inventoryBoundary;
     setPersonalState({ status: "loading", items: null, retry });
 
     void (async () => {
@@ -71,7 +79,12 @@ export function useActiveInventory(viewerMode: ViewerMode): ActiveInventoryState
           payload = undefined;
         }
 
-        if (controller.signal.aborted) return;
+        if (
+          controller.signal.aborted ||
+          latestBoundaryRef.current !== inventoryBoundary
+        ) {
+          return;
+        }
 
         if (!response.ok) {
           const failure = payload as { error?: string; hint?: string } | undefined;
@@ -98,7 +111,12 @@ export function useActiveInventory(viewerMode: ViewerMode): ActiveInventoryState
           retry,
         });
       } catch (error) {
-        if (controller.signal.aborted) return;
+        if (
+          controller.signal.aborted ||
+          latestBoundaryRef.current !== inventoryBoundary
+        ) {
+          return;
+        }
         setPersonalState({
           status: "error",
           items: null,
@@ -113,12 +131,15 @@ export function useActiveInventory(viewerMode: ViewerMode): ActiveInventoryState
     })();
 
     return () => controller.abort();
-  }, [requestVersion, retry, viewerMode]);
+  }, [identityKey, requestVersion, retry, viewerMode]);
 
   if (viewerMode === "guest") {
     return { status: "guest", items: guestInventory.items, retry };
   }
   if (viewerMode === "loading") {
+    return { status: "loading", items: null, retry };
+  }
+  if (requestBoundaryRef.current !== inventoryBoundary) {
     return { status: "loading", items: null, retry };
   }
   return personalState;

@@ -99,6 +99,31 @@ describe("useActiveInventory", () => {
     });
   });
 
+  it("reloads instead of retaining inventory when the signed-in identity changes", async () => {
+    const fetchMock = installFetchMock();
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ items: PERSONAL_ITEMS }))
+      .mockResolvedValueOnce(jsonResponse({ items: [] }));
+
+    const { result, rerender } = renderHook(
+      ({ identityKey }) => useActiveInventory("signed-in", identityKey),
+      { initialProps: { identityKey: "user-a:session-a" } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("populated");
+    });
+
+    rerender({ identityKey: "user-b:session-b" });
+
+    expect(result.current.status).toBe("loading");
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(result.current.status).toBe("empty");
+    });
+  });
+
   it("keeps a shaped HTTP error and retries with a second request", async () => {
     const fetchMock = installFetchMock();
     fetchMock

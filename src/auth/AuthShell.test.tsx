@@ -49,6 +49,7 @@ vi.mock("@clerk/react", () => ({
     mode: string;
   }) => <div data-sign-up-mode={mode}>{children}</div>,
   UserButton: () => <button aria-label="Open account menu" type="button" />,
+  useAuth: () => ({ userId: "user_test", sessionId: "session_test" }),
 }));
 
 /**
