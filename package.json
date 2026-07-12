@@ -15,15 +15,17 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@atlaskit/tokens": "^15.5.0",
     "@clerk/backend": "^3.11.4",
     "@clerk/react": "^6.12.2",
+    "@fontsource-variable/inter": "^5.2.8",
     "@neondatabase/serverless": "^1.1.0",
+    "@tailwindcss/vite": "^4.3.2",
     "d3": "^7.9.0",
     "drizzle-orm": "^0.45.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.3",
+    "tailwindcss": "^4.3.2"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

@@ -1,3 +1,4 @@
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vitest/config";
 import { handleEvaluate } from "./api/_lib/handler";
@@ -80,7 +81,7 @@ function unknownApiGuard(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), evaluateDevApi(), unknownApiGuard()],
+  plugins: [tailwindcss(), react(), evaluateDevApi(), unknownApiGuard()],
   server: {
     host: "127.0.0.1",
   },

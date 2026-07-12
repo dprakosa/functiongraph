@@ -566,7 +566,7 @@ export function GraphCanvas({
     svg
       .append("desc")
       .text(
-        "Force-directed map of what you own. Coral means covered, green means genuinely new.",
+        "Force-directed map of what you own. Gray means covered, emerald means genuinely new.",
       );
     svg.on("pointerdown.tooltip-dismiss", (event: PointerEvent) => {
       const target = event.target;

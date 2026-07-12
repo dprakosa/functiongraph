@@ -10,23 +10,22 @@ import inventoryFile from "./data/inventory.json";
 import { useViewerState } from "./auth/AuthShell";
 import { GraphCanvas } from "./components/GraphCanvas";
 import { ProductCommandBar } from "./components/ProductCommandBar";
+import { InventoryCanvasState } from "./components/evaluate/InventoryCanvasState";
+import { InventoryStatus } from "./components/evaluate/InventoryStatus";
+import { ItemInspector } from "./components/evaluate/ItemInspector";
+import { VerdictPanel } from "./components/evaluate/VerdictPanel";
 import {
   buildGraph,
   type GraphNodeDatum,
 } from "./graph/buildGraph";
 import { useReducedMotion } from "./hooks/useReducedMotion";
-import {
-  useActiveInventory,
-  type ActiveInventoryState,
-} from "./inventory/useActiveInventory";
+import { useActiveInventory } from "./inventory/useActiveInventory";
 import { copy } from "./lib/copy";
 import { routeVerdict } from "./lib/route";
-import type { InventoryFile, Item, Row } from "./lib/types";
-import { RouteLink } from "./routing/RouteLink";
+import type { InventoryFile } from "./lib/types";
 import {
   appReducer,
   initialState,
-  type AppAction,
   type AppState,
 } from "./state/appReducer";
 import { evaluate, EvaluateFailure } from "./state/evaluateClient";
@@ -36,155 +35,6 @@ const guestInventory = inventoryFile as InventoryFile;
 
 function titleCase(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function formatPrice(price: number): string {
-  return `$${price.toLocaleString("en-AU", {
-    maximumFractionDigits: Number.isInteger(price) ? 0 : 2,
-  })}`;
-}
-
-function inventoryStatusCopy(inventory: ActiveInventoryState): {
-  label: string;
-  detail: string;
-} {
-  switch (inventory.status) {
-    case "guest":
-      return {
-        label: "Guest inventory",
-        detail: `${inventory.items.length} bundled items · examples stay offline`,
-      };
-    case "loading":
-      return { label: "Personal inventory", detail: "Loading your confirmed items" };
-    case "error":
-      return { label: "Personal inventory", detail: "Inventory unavailable" };
-    case "empty":
-      return { label: "Personal inventory", detail: "No confirmed items yet" };
-    case "populated":
-      return {
-        label: "Personal inventory",
-        detail: `${inventory.items.length} confirmed ${inventory.items.length === 1 ? "item" : "items"}`,
-      };
-  }
-}
-
-function InventoryBar({ inventory }: { inventory: ActiveInventoryState }) {
-  const status = inventoryStatusCopy(inventory);
-  return (
-    <section className="inventory-bar" aria-label="Inventory status and photo action">
-      <div
-        className="inventory-bar__status"
-        role="status"
-        aria-live="polite"
-        data-inventory-status={inventory.status}
-      >
-        <span className="inventory-bar__signal" aria-hidden="true" />
-        <span>
-          <strong>{status.label}</strong>
-          <small>{status.detail}</small>
-        </span>
-      </div>
-      <div
-        className="photo-action-slot"
-        id="photo-action-slot"
-        data-slot="photo-action"
-        tabIndex={-1}
-      >
-        <button className="button photo-action" type="button" disabled>
-          Add from photo
-          <small>Coming next</small>
-        </button>
-        <span className="visually-hidden">
-          Photo capture is reserved here and will be enabled by the photo inventory feature.
-        </span>
-      </div>
-    </section>
-  );
-}
-
-function InventoryCanvasState({ inventory }: { inventory: ActiveInventoryState }) {
-  if (inventory.status === "loading") {
-    return (
-      <div className="inventory-canvas-state inventory-canvas-state--loading" role="status">
-        <span className="inventory-state-kicker">Personal inventory</span>
-        <h2>Loading your capability map</h2>
-        <p>We are checking the items confirmed for this account.</p>
-        <div className="inventory-state-skeleton" aria-hidden="true">
-          <i /><i /><i />
-        </div>
-      </div>
-    );
-  }
-
-  if (inventory.status === "error") {
-    return (
-      <div className="inventory-canvas-state" role="alert">
-        <span className="inventory-state-kicker">Personal inventory</span>
-        <h2>Your inventory could not load</h2>
-        <p>{titleCase(inventory.error)}. {inventory.hint}</p>
-        <button className="button inventory-state-action" type="button" onClick={inventory.retry}>
-          Try again
-        </button>
-      </div>
-    );
-  }
-
-  if (inventory.status === "empty") {
-    return (
-      <div className="inventory-canvas-state inventory-canvas-state--empty">
-        <span className="inventory-state-kicker">Your account starts empty</span>
-        <h2>Capture what you own to build this graph</h2>
-        <p>
-          Confirmed items will become rooms, objects, and capabilities here. Demo
-          ownership is never substituted into your personal account.
-        </p>
-        <a className="inventory-state-action" href="#photo-action-slot">
-          Find the photo action
-        </a>
-      </div>
-    );
-  }
-
-  return null;
-}
-
-function ItemInspectorSlot({
-  item,
-  onClose,
-}: {
-  item: Item;
-  onClose: () => void;
-}) {
-  return (
-    <aside
-      className="item-inspector-slot"
-      data-slot="item-inspector"
-      aria-labelledby="item-inspector-title"
-    >
-      <div className="item-inspector-slot__header">
-        <div>
-          <p className="eyebrow">Item inspector</p>
-          <h2 id="item-inspector-title">{item.name}</h2>
-        </div>
-        <button type="button" aria-label="Close item inspector" onClick={onClose}>
-          ×
-        </button>
-      </div>
-      <p className="item-inspector-slot__domain">{titleCase(item.domain)}</p>
-      <h3>Mapped capabilities</h3>
-      <ul>
-        {item.capabilities.map((capability) => (
-          <li key={`${capability.name}:${capability.tier}`}>
-            <span>{capability.name}</span>
-            <small>{capability.tier}</small>
-          </li>
-        ))}
-      </ul>
-      <p className="item-inspector-slot__note">
-        Edit and delete controls will use this contextual rail in the saved-item release.
-      </p>
-    </aside>
-  );
 }
 
 function phaseMessage(state: AppState): string | null {
@@ -210,167 +60,27 @@ function phaseMessage(state: AppState): string | null {
   }
 }
 
-interface VerdictRowProps {
-  row: Row;
-  active: boolean;
-  onPulse: (capSlug: string) => void;
-}
-
-function VerdictRow({ row, active, onPulse }: VerdictRowProps) {
-  const source = row.covered
-    ? copy.rowSource(row.bestCoverer ?? "Owned item", row.covererCount)
-    : copy.rowNew;
-
+function GraphLegend() {
   return (
-    <li>
-      <button
-        className={`verdict-row verdict-row--${row.covered ? "covered" : "new"}`}
-        type="button"
-        onClick={() => onPulse(row.capSlug)}
-        aria-pressed={active}
-        aria-label={`${row.capability}: ${source}. Highlight its graph edge`}
-      >
-        <span className="verdict-row__mark" aria-hidden="true">
-          {row.covered ? "✓" : "+"}
-        </span>
-        <span className="verdict-row__body">
-          <span className="verdict-row__capability">{row.capability}</span>
-          <span className="verdict-row__source">{source}</span>
-        </span>
-        <span className="verdict-row__tier">{row.tier}</span>
-        <span className="verdict-row__edge" aria-hidden="true">
-          ↗
-        </span>
-      </button>
-    </li>
-  );
-}
-
-interface VerdictPanelProps {
-  state: AppState;
-  dispatch: React.Dispatch<AppAction>;
-}
-
-function VerdictPanel({ state, dispatch }: VerdictPanelProps) {
-  const result = state.result;
-  if (!result || state.phase !== "verdict") return null;
-
-  const { verdict } = result;
-  const percent = Math.round(verdict.coverage * 100);
-  const isApproval = verdict.coveredCount === 0;
-  const delta =
-    result.price == null
-      ? null
-      : verdict.newCapabilities.length === 0
-        ? copy.deltaNothing(result.price)
-        : copy.deltaNew(
-            result.price,
-            verdict.newCapabilities.length,
-            verdict.pricePerNewCapability!,
-          );
-
-  const submitReason = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    dispatch({ type: "BOUGHT_ANYWAY" });
-  };
-
-  return (
-    <aside
-      className={`verdict-panel${isApproval ? " verdict-panel--approval" : ""}`}
-      aria-labelledby="verdict-title"
+    <div
+      className="flex flex-wrap items-center gap-3 rounded-full border border-hairline bg-white/90 px-3 py-1.5 text-[10px] font-semibold text-muted backdrop-blur-sm"
+      aria-label="Graph legend"
     >
-      <div className="verdict-panel__header">
-        <p className="eyebrow">Verdict</p>
-        <div className="verdict-panel__titleline">
-          <h2 id="verdict-title">{result.name}</h2>
-          {result.price != null && (
-            <span className="verdict-panel__price">{formatPrice(result.price)}</span>
-          )}
-        </div>
-        {isApproval && <p className="approval-line">{copy.approval}</p>}
-      </div>
-
-      <section className="coverage" aria-label="Coverage score">
-        <div className="coverage__line">
-          <strong>{copy.coverageLine(verdict.coveredCount, verdict.totalCount)}</strong>
-          <span>{percent}%</span>
-        </div>
-        <progress value={verdict.coverage} max={1}>
-          {percent}%
-        </progress>
-        <p>{copy.coverageSub(percent)}</p>
-      </section>
-
-      <section className="checklist" aria-labelledby="checklist-title">
-        <div className="section-heading">
-          <h3 id="checklist-title">Capability checklist</h3>
-          <span>Tap a row to trace its edge</span>
-        </div>
-        <ul>
-          {verdict.rows.map((row) => (
-            <VerdictRow
-              key={row.capSlug}
-              row={row}
-              active={state.pulsingSlug === row.capSlug}
-              onPulse={(capSlug) => dispatch({ type: "ROW_PULSED", capSlug })}
-            />
-          ))}
-        </ul>
-      </section>
-
-      {(delta || result.altSuggestion) && (
-        <section className="delta" aria-label="Delta economics">
-          {delta && <p className="delta__line">{delta}</p>}
-          {result.altSuggestion && (
-            <p className="delta__alternative">
-              <span>Acquire only the delta</span>
-              {result.altSuggestion}
-            </p>
-          )}
-        </section>
-      )}
-
-      <section className="verdict-actions" aria-label="Purchase actions">
-        <button
-          className="button button--skip"
-          type="button"
-          onClick={() => dispatch({ type: "PURCHASE_SKIPPED" })}
-        >
-          {copy.skipAction}
-        </button>
-        <button
-          className="button button--quiet"
-          type="button"
-          aria-expanded={state.stillNeedItOpen}
-          onClick={() => dispatch({ type: "STILL_NEEDED" })}
-        >
-          {copy.stillNeedAction}
-        </button>
-
-        {state.stillNeedItOpen && (
-          <form className="reason-form" onSubmit={submitReason}>
-            <label htmlFor="purchase-reason">{copy.reasonPrompt}</label>
-            <div className="reason-form__controls">
-              <input
-                id="purchase-reason"
-                name="reason"
-                type="text"
-                value={state.reason}
-                maxLength={240}
-                autoFocus
-                placeholder="A capability or situation that matters to you"
-                onChange={(event) =>
-                  dispatch({ type: "REASON_CHANGED", reason: event.target.value })
-                }
-              />
-              <button className="button button--buy" type="submit">
-                {copy.buyAction}
-              </button>
-            </div>
-          </form>
-        )}
-      </section>
-    </aside>
+      <span className="inline-flex items-center gap-1.5">
+        <i className="inline-block h-0.5 w-4 bg-covered" /> covered
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <i className="inline-block h-0.5 w-4 bg-new" /> new
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <i className="inline-block h-2.5 w-2.5 rounded-full border border-item-node-border bg-item-node" />{" "}
+        item
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <i className="inline-block h-2 w-4 rounded-full border border-capability-node-border bg-capability-node" />{" "}
+        capability
+      </span>
+    </div>
   );
 }
 
@@ -503,25 +213,23 @@ export default function GraphPage() {
     activeInventory.status === "loading" || activeInventory.status === "error";
 
   return (
-    <main className="app-shell" aria-labelledby="intro-title">
-      <section className="intro" id="top" aria-labelledby="intro-title">
-        <div className="intro__copy">
-          <p className="eyebrow graph-brandline">
-            <RouteLink className="graph-wordmark" to="/" aria-label="FunctionGraph home">
-              <span className="graph-brandmark" aria-hidden="true">FG</span>
-              <span>FunctionGraph</span>
-            </RouteLink>
-            <span className="graph-brandline__divider" aria-hidden="true">/</span>
-            <span>Purchase evaluation</span>
-          </p>
-          <h1 id="intro-title" data-route-heading tabIndex={-1}>
-            Map a product against what you own
+    <main
+      className="flex h-full min-h-0 flex-col bg-white"
+      aria-labelledby="evaluate-title"
+    >
+      <header className="grid shrink-0 gap-2.5 border-b border-hairline px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <h1
+            id="evaluate-title"
+            data-route-heading
+            tabIndex={-1}
+            className="m-0 text-sm font-semibold tracking-tight whitespace-nowrap text-ink outline-none"
+          >
+            Evaluate a purchase
           </h1>
-          <p>
-            See every covered capability and the genuinely new delta before
-            you decide.
-          </p>
+          <InventoryStatus inventory={activeInventory} />
         </div>
+
         <ProductCommandBar
           draft={draft}
           isEvaluating={isReading}
@@ -535,154 +243,167 @@ export default function GraphPage() {
           onSubmit={submitProduct}
           onExample={tryExample}
         />
-      </section>
 
-      <InventoryBar inventory={activeInventory} />
-
-      {state.error && (
-        <section className="error-banner" role="alert">
-          <div>
-            <strong>{titleCase(state.error.error)}</strong>
-            <span>{state.error.hint}</span>
-          </div>
-          <button
-            type="button"
-            aria-label="Dismiss error"
-            onClick={() => dispatch({ type: "ERROR_DISMISSED" })}
+        {state.error && (
+          <section
+            className="flex items-center justify-between gap-4 rounded-card border border-hairline bg-wash px-3 py-2.5"
+            role="alert"
           >
-            ×
-          </button>
-        </section>
-      )}
+            <div className="grid gap-0.5">
+              <strong className="text-[13px] font-semibold text-ink">
+                {titleCase(state.error.error)}
+              </strong>
+              <span className="text-xs text-body">{state.error.hint}</span>
+            </div>
+            <button
+              type="button"
+              aria-label="Dismiss error"
+              onClick={() => dispatch({ type: "ERROR_DISMISSED" })}
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-control text-base text-muted transition-colors hover:bg-hairline-soft hover:text-ink"
+            >
+              ×
+            </button>
+          </section>
+        )}
 
-      {state.result && state.phase !== "resting" && (
-        <section className="capability-stream" aria-label="Extracted capabilities">
-          <div className="capability-stream__heading">
-            <span>Capabilities</span>
-            <span>
-              {state.revealedChips} / {state.result.capabilities.length}
-            </span>
-          </div>
-          <div className="capability-stream__chips" aria-live="polite">
-            {state.result.capabilities
-              .slice(0, state.revealedChips)
-              .map((capability) => (
-                <span
-                  key={`${capability.name}:${capability.tier}`}
-                  className={`capability-chip capability-chip--${capability.tier}`}
-                >
-                  {capability.name}
-                  <small>{capability.tier}</small>
-                </span>
-              ))}
-          </div>
-        </section>
-      )}
+        {state.result && state.phase !== "resting" && (
+          <section
+            className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3"
+            aria-label="Extracted capabilities"
+          >
+            <div className="flex items-baseline gap-2 pt-1.5 text-[11px] font-semibold text-muted">
+              <span>Capabilities</span>
+              <span className="text-metric text-faint">
+                {state.revealedChips} / {state.result.capabilities.length}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5" aria-live="polite">
+              {state.result.capabilities
+                .slice(0, state.revealedChips)
+                .map((capability) => (
+                  <span
+                    key={`${capability.name}:${capability.tier}`}
+                    className={`capability-chip inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] ${
+                      capability.tier === "primary"
+                        ? "border-hairline bg-wash text-ink"
+                        : "border-hairline-soft bg-transparent text-body"
+                    }`}
+                  >
+                    {capability.name}
+                    <small className="text-[8.5px] font-bold tracking-wide text-faint uppercase">
+                      {capability.tier}
+                    </small>
+                  </span>
+                ))}
+            </div>
+          </section>
+        )}
+      </header>
 
       <section
-        className={`workspace${state.phase === "verdict" ? " has-verdict" : ""}${
-          hasContextualRail ? " has-contextual-rail" : ""
-        }`}
+        className="flex min-h-0 flex-1 flex-col lg:flex-row"
         aria-label="Capability graph and verdict"
       >
-        <div className="canvas-column">
-          <div className="canvas-toolbar">
-            <div>
+        <div className="canvas-frame relative min-h-[380px] min-w-0 flex-1 lg:min-h-0">
+          {/* Floating view control: back action + current level */}
+          <div className="absolute top-3 left-3 z-[3] flex items-center gap-2">
+            <div className="grid gap-1 rounded-card border border-hairline bg-white/90 px-3 py-2 backdrop-blur-sm">
               {state.view.level === "room" && (
                 <button
-                  className="back-button"
+                  className="-mx-1 -mt-0.5 flex w-fit items-center gap-1 rounded-chip px-1 py-0.5 text-[11px] font-medium text-body transition-colors hover:bg-hairline-soft hover:text-ink"
                   type="button"
                   onClick={() => dispatch({ type: "WENT_HOME" })}
                 >
                   <span aria-hidden="true">←</span> Back to rooms
                 </button>
               )}
-              <p className="eyebrow">Live inventory</p>
-              <h2>{viewLabel}</h2>
+              <p className="m-0 text-[9.5px] font-semibold tracking-widest text-faint uppercase">
+                Live inventory
+              </p>
+              <h2 className="m-0 text-[13px] font-semibold tracking-tight text-ink">
+                {viewLabel}
+              </h2>
             </div>
-            {showGraph && (
-              <div className="graph-legend" aria-label="Graph legend">
-                <span><i className="legend-covered" /> covered</span>
-                <span><i className="legend-new" /> new</span>
-                <span><i className="legend-item" /> item</span>
-                <span><i className="legend-capability" /> capability</span>
-              </div>
-            )}
           </div>
 
-          <div className="canvas-frame">
-            {showGraph ? (
-              <>
-                <GraphCanvas
-                  graph={graph}
-                  phase={state.phase}
-                  routeDomain={state.route?.domain ?? null}
-                  routingActive={state.phase === "routing"}
-                  pulsingSlug={state.pulsingSlug}
-                  selectedItemId={state.expandedItemId}
-                  reducedMotion={reducedMotion}
-                  viewKey={viewKey}
-                  onNodeClick={handleNodeClick}
-                  onZoomOut={() => dispatch({ type: "WENT_HOME" })}
-                />
-                <p
-                  className="visually-hidden"
-                  id="item-selection-status"
-                  role="status"
-                  aria-live="polite"
-                  aria-atomic="true"
-                >
-                  {itemSelectionStatus}
-                </p>
-              </>
-            ) : (
-              <InventoryCanvasState inventory={activeInventory} />
-            )}
+          {showGraph && (
+            <div className="absolute top-3 right-3 z-[3] hidden sm:block">
+              <GraphLegend />
+            </div>
+          )}
 
-            {showGraph && state.phase === "resting" && state.view.level === "home" && (
-              <p className="canvas-hint">Tap a room, or map a product above</p>
-            )}
-            {showGraph && state.phase === "resting" && state.view.level === "room" && (
-              <p className="canvas-hint">Tap an item to highlight its capabilities</p>
-            )}
-            {statusMessage && (
-              <div
-                className={`route-toast route-toast--${state.phase}`}
+          {showGraph ? (
+            <>
+              <GraphCanvas
+                graph={graph}
+                phase={state.phase}
+                routeDomain={state.route?.domain ?? null}
+                routingActive={state.phase === "routing"}
+                pulsingSlug={state.pulsingSlug}
+                selectedItemId={state.expandedItemId}
+                reducedMotion={reducedMotion}
+                viewKey={viewKey}
+                onNodeClick={handleNodeClick}
+                onZoomOut={() => dispatch({ type: "WENT_HOME" })}
+              />
+              <p
+                className="sr-only"
+                id="item-selection-status"
                 role="status"
                 aria-live="polite"
+                aria-atomic="true"
               >
-                <span className="route-toast__signal" aria-hidden="true" />
-                {statusMessage}
-              </div>
-            )}
-            {state.toast && (
-              <div className="notice-toast" role="status">
-                <span>{state.toast}</span>
-                <button
-                  type="button"
-                  aria-label="Dismiss notice"
-                  onClick={() => dispatch({ type: "TOAST_CLEARED" })}
-                >
-                  ×
-                </button>
-              </div>
-            )}
-          </div>
+                {itemSelectionStatus}
+              </p>
+            </>
+          ) : (
+            <InventoryCanvasState inventory={activeInventory} />
+          )}
+
+          {showGraph && state.phase === "resting" && state.view.level === "home" && (
+            <p className="canvas-hint">Tap a room, or map a product above</p>
+          )}
+          {showGraph && state.phase === "resting" && state.view.level === "room" && (
+            <p className="canvas-hint">Tap an item to highlight its capabilities</p>
+          )}
+          {statusMessage && (
+            <div
+              className={`route-toast route-toast--${state.phase}`}
+              role="status"
+              aria-live="polite"
+            >
+              <span className="route-toast__signal" aria-hidden="true" />
+              {statusMessage}
+            </div>
+          )}
+          {state.toast && (
+            <div className="notice-toast" role="status">
+              <span>{state.toast}</span>
+              <button
+                type="button"
+                aria-label="Dismiss notice"
+                onClick={() => dispatch({ type: "TOAST_CLEARED" })}
+              >
+                ×
+              </button>
+            </div>
+          )}
         </div>
 
-        <VerdictPanel state={state} dispatch={dispatch} />
-        {selectedItem && showItemInspector && (
-          <ItemInspectorSlot
-            item={selectedItem}
-            onClose={() => dispatch({ type: "ITEM_TOGGLED", itemId: selectedItem.id })}
-          />
+        {hasContextualRail && (
+          <div className="min-h-0 w-full shrink-0 border-t border-hairline lg:h-full lg:w-[380px] lg:border-t-0 lg:border-l">
+            <VerdictPanel state={state} dispatch={dispatch} />
+            {selectedItem && showItemInspector && (
+              <ItemInspector
+                item={selectedItem}
+                onClose={() =>
+                  dispatch({ type: "ITEM_TOGGLED", itemId: selectedItem.id })
+                }
+              />
+            )}
+          </div>
         )}
       </section>
-
-      <footer className="app-footer">
-        <p>Capabilities create the structure. Every verdict row traces to a graph edge.</p>
-        <p>Coral means covered · Green means genuinely new</p>
-      </footer>
     </main>
   );
 }

@@ -1,368 +1,158 @@
-# FunctionGraph visual implementation guide — Atlassian Design System edition
+# FunctionGraph visual implementation guide — clean light SaaS edition
 
 ## Authority and intent
 
-This is the repository's authoritative visual implementation guide. **`PDD.md` is the highest-precedence source of truth**—that is the actual specification filename in this repository. If this guide, `README.md`, `CLAUDE.md`, code comments, or chat history conflicts with `PDD.md`, follow `PDD.md`. Do not alter normative requirement IDs, values, algorithms, state ordering, or scope through visual work.
+This is the repository's authoritative visual implementation guide. **`PDD.md` is the highest-precedence source of truth**—that is the actual specification filename in this repository. If this guide, `README.md`, `CLAUDE.md`, code comments, or chat history conflicts with `PDD.md`, follow `PDD.md`. Do not alter normative requirement IDs, values, algorithms, state ordering, or scope through visual work. This edition supersedes the Atlassian Design System edition per the 2026-07-12 decision-log entry in `PDD.md` §14.
 
-FunctionGraph is a precise, bright, technical decision tool that speaks the **Atlassian Design System (ADS)** visual language: token-driven color, the ADS type ramp, the 8px spatial grid, ADS elevation, and ADS interaction chrome — applied to a node-editor workspace. Keep the clean light shell, dense readable layout, restrained neutral surfaces, hairline borders, compact controls, strong type hierarchy, and fast polish. On the graph view, the graph—not a marketing page or dashboard grid—is the product and the visual centre.
+FunctionGraph is a bright, trustworthy, consumer-grade decision tool in the clean light SaaS tradition (Stripe/Notion register): white canvases, one quiet gray shell tint, hairline borders, restrained navy-tinted shadows, generous whitespace on marketing surfaces and calm density in the app. The product has two visual modes:
 
-The interface must feel native to Atlassian: neutral-dominant, semantic color used sparingly and meaningfully, motion that clarifies rather than decorates. It must not resemble a generic SaaS template, a collection of unrelated cards, a colourful analytics dashboard, neon cyberpunk, glassmorphism, Material Design, or a default Shadcn/Tailwind look.
+- **Marketing surfaces** (`/`, 404): editorial scale, soft radial gradients on the hero and final CTA only, big tight-tracked headlines, the product itself as the trust anchor.
+- **Application surfaces** (`/graph`, `/inventory`, `/history`, `/settings`): a persistent sidebar shell beside a white working canvas. On the Evaluate page the graph—not a dashboard grid—is the protagonist; chrome floats over it as blurred pills.
 
 ## Design laws
 
-1. The live graph is the dominant surface at every graph viewport; the landing surface remains a compact, graph-free entry point.
-2. Exactly two colours communicate verdict state: **coral (the ADS red accent ramp) means `covered`; green (the ADS green accent ramp) means `new`.**
-3. **ADS brand blue is interaction chrome only**: primary buttons, focus rings, selected states, links. It never communicates verdict, warning, or graph semantics. This interprets `PDD.md` VIS-1—"speaking" colours are verdict semantics; interaction chrome is not speech.
-4. Amber (the ADS yellow accent ramp) is restricted to home-level hotspot badges. Everything else is quiet ADS neutral.
-5. The ghost is the only node with a glow. The transient edge pulse required by VIS-4 is the only non-node exception and lasts no longer than two seconds.
-6. Every visible claim is inspectable: verdict rows and graph edges come from the same verdict data.
-7. Motion represents computation or direct interaction; it is never decorative.
-8. The interface is decision support, not a blocker. Preserve both decision paths and the designed approval state.
-9. Never hardcode a colour, radius, shadow, or font weight. Consume ADS tokens through the app-level custom properties below.
+1. The live graph is the dominant surface of the Evaluate page at every viewport; supporting UI floats over it or sits in one bounded rail.
+2. Verdict semantics use exactly two speaking treatments: **covered = slate gray + check icon (recedes)**; **genuinely new = emerald + sparkle icon (pops)**. Covered evidence is quiet by design—redundancy should feel settled, not alarming.
+3. **Indigo (`--color-accent`) is interaction chrome only**: primary buttons, links, focus rings, selection, the coverage ring, and the row-pulse highlight. It never communicates verdict state.
+4. Amber is reserved for the "mostly covered" recommendation badge (and the pre-existing home-level hotspot badges). Everything else is neutral.
+5. Verdict state is never colour-alone: covered/new pair colour with icon (check / sparkle), text (`not owned — new`), and in the graph with weight, opacity, and dash (triple encoding).
+6. The ghost is the only glowing node and the only dashed+glowing node (accent-tinted: it is the object under consideration, not evidence). The transient edge pulse required by VIS-4 is the only non-node exception and lasts no longer than two seconds.
+7. Every visible claim is inspectable: verdict rows and graph edges come from the same verdict data.
+8. Motion represents computation or direct interaction; it is never decorative. (The landing page's ambient graph is explicit brand art, is `aria-hidden`, pauses off-screen, and freezes under reduced motion.)
+9. The interface is decision support, not a blocker. Preserve both decision paths and the designed approval state.
+10. Never hardcode a colour, radius, or shadow in component code. Consume the `@theme` tokens below (as Tailwind utilities or `var(--color-*)` in `src/styles/graph.css`).
 
 ## Tokens
 
-ADS tokens are installed at runtime by `@atlaskit/tokens`: `src/main.tsx` calls `setGlobalTheme({ colorMode: "light" })`, which injects every `--ds-*` custom property (light color theme plus spacing, shape, and typography themes). The app runs the **light** theme only.
+Tokens are defined in the `@theme` block of `src/styles/index.css` (Tailwind CSS v4). They emit `--color-*`, `--radius-*`, `--shadow-*`, and `--animate-*` custom properties and drive the generated utilities (`bg-accent`, `text-covered-text`, `rounded-card`, `shadow-float`, …). `src/styles/graph.css` additionally binds the legacy graph variable names (`--covered`, `--new`, `--item-node`, `--edge-inventory`, `--ghost-glow`, …) to these tokens via the `:root` bridge in `index.css` so the D3 styling stays token-pure.
 
-`src/styles/app.css` binds the app-level semantic properties to ADS tokens in `:root`. Each binding carries the ADS light-theme value as a literal fallback so first paint matches before the theme CSS resolves. Add new bindings there; never scatter raw values through component rules.
-
-| App property | ADS token | Role |
+| Token | Value | Role |
 |---|---|---|
-| `--background`, `--surface-1` | `elevation.surface` | Page and card surfaces |
-| `--surface-2` | `elevation.surface.sunken` | Sunken panels (verdict panel, generic node fill) |
-| `--surface-3` | `color.background.neutral` | Neutral fills (progress track) |
-| `--border-subtle`, `--border-default` | `color.border` | Hairlines (ADS has one hairline step) |
-| `--border-strong` | `color.border.bold` | Emphasised borders, room strokes |
-| `--text-primary` | `color.text` | Primary text |
-| `--text-secondary` | `color.text.subtle` | Supporting text |
-| `--text-muted` | `color.text.subtlest` | Muted labels |
-| `--covered` | `color.border.accent.red` | Covered/redundant strokes, marks, progress fill |
-| `--covered-soft` | `color.background.accent.red.subtlest` | Ghost fill |
-| `--covered-text` | `color.text.accent.red` | Covered text |
-| `--new` | `color.border.accent.green` | New strokes and marks |
-| `--new-soft` | `color.background.accent.green.subtlest` | New-hub fill, approval fill |
-| `--new-text` | `color.text.accent.green` | New text |
-| `--amber` | `color.background.accent.yellow.bolder` | Hotspot badge fill only (badge text is `color.text.inverse`) |
-| `--item-node` / `--item-node-border` / `--item-node-text` / `--item-node-badge` | blue accent ramp (`subtlest` / `border...subtle` / `text...bolder` / `text.accent.blue`) | Item type cue (cool) |
-| `--capability-node` / `--capability-node-border` / `--capability-node-text` | orange accent ramp (`subtlest` / `border.accent.orange` / `text...bolder`) | Capability type cue (warm) |
-| `--interaction-primary` (+ `-hovered`, `-pressed`) | `color.background.brand.bold` ramp | Primary buttons |
-| `--interaction-on-primary` | `color.text.inverse` | Text on primary buttons |
-| `--focus-ring` | `color.border.focused` | Focus indicators |
+| `--color-covered` / `-soft` / `-text` | slate `#64748b` / `#f1f5f9` / `#475569` | Covered/redundant evidence (recedes) |
+| `--color-new` / `-soft` / `-text` | emerald `#059669` / `#ecfdf5` / `#047857` | Genuinely-new evidence (pops) |
+| `--color-accent` / `-hover` / `-pressed` / `-soft` | indigo `#5b5bd6` ramp | Interaction chrome only |
+| `--color-amber` / `-soft` / `-text` | `#d97706` ramp | "Mostly covered" recommendation badge |
+| `--color-ink` | `#0f172a` | Headings, primary text |
+| `--color-body` / `--color-muted` / `--color-faint` | `#4b5563` / `#6b7280` / `#9ca3af` | Supporting text ramp |
+| `--color-shell` | `#f7f7f8` | Sidebar / marketing band tint |
+| `--color-canvas` / `--color-wash` | `#ffffff` / `#fafafa` | Working canvas / sunken cards |
+| `--color-hairline` / `-soft` | `#e5e7eb` / `#f3f4f6` | Borders (border-first chrome) |
+| `--color-item-node*` | indigo-tinted `#eef2ff` ramp | Structural item cue (cool) — never verdict |
+| `--color-capability-node*` | stone `#fafaf9` ramp | Structural capability cue (warm-neutral) — never verdict |
+| `--color-ghost*` | soft violet `#8583e0` ramp | The considered product (provisional) |
+| `--radius-chip/control/card/panel/hero` | 6/8/12/16/24px | Radius scale (chips → marketing tiles) |
+| `--shadow-xs/float/overlay/frame` | navy-tinted stacks | Border-first in-app; shadows only for floating/overlay/marketing-frame surfaces |
 
-Item and capability tints are **structural type cues, never verdict or status colours**; coral and green retain their exclusive covered/new meanings. Item selection uses the ADS selected tokens (`color.background.accent.blue.subtler` + `color.border.selected`), which is interaction chrome under law 3.
-
-Derived graph plumbing (canvas dots, inventory edge strokes, ghost/pulse glows, soft approval borders) is computed **from these tokens** with `color-mix()` in `:root`—see `--canvas-dot`, `--edge-inventory`, `--edge-inventory-strong`, `--edge-faint`, `--ghost-glow`, `--pulse-glow`, `--new-border-soft`. Never re-derive alpha values inline in component rules.
-
-Inputs use `color.background.input` and `color.border.input`. Neutral (secondary) controls use the `color.background.neutral` ramp with its `hovered`/`pressed` steps. Do not introduce purple, cyan, pink, magenta, or any additional speaking colour. Do not use `color.background.danger`/`warning` ramps for banners—errors stay neutral so red never competes with the covered semantics.
+Do not introduce additional speaking colours (no red/danger ramps for banners—errors stay neutral so nothing competes with the verdict encoding; no purple/cyan/pink accents).
 
 ## Typography, shape, and density
 
-Typography comes from the ADS typography theme:
-
-- Font stack: `--ds-font-family-body` (`"Atlassian Sans"` with system fallbacks). The Atlassian Sans files are not bundled; the stack degrades to system fonts cleanly. Never load a different brand font.
-- Weights: use the tokens `--ds-font-weight-medium` (500), `--ds-font-weight-semibold` (600), `--ds-font-weight-bold` (653). No raw weight literals, no weights above the bold token.
-- No negative letter-spacing. Headings are set at their natural tracking, ADS style. Small positive tracking on tiny uppercase labels is permitted.
-- Use sentence case everywhere and the fixed vocabulary in `PDD.md`.
-- Prefer 12–16px working text and compact 16–32px headings. Density is a FunctionGraph requirement; ADS component sizes are recipes, not minimums.
-- Use `font-variant-numeric: tabular-nums` for prices, percentages, scores, and coverage counts.
-- Use `--text-secondary` and `--text-muted` for supporting copy; never solve hierarchy with many colours.
-- Do not place a giant hero heading in the application.
-
-Spacing stays on the ADS 8px grid: the working scale 4, 8, 12, 16, 20, 24, 32 maps 1:1 to `space.050`–`space.400`.
-
-Shape uses the ADS radius scale: `--ds-radius-small` (4) for rows, `--ds-radius-medium` (6) for buttons and inputs, `--ds-radius-large` (8) for cards and panels, `--ds-radius-xlarge` (12) for the workspace frame, `--ds-radius-full` for pills. Reserve full pills for nodes, capabilities, statuses, and compact chips—not panels or ordinary buttons.
-
-Elevation: flat surfaces get hairline borders only. Floating surfaces pair an elevation surface with its shadow token—`elevation.surface.raised` + `--ds-shadow-raised` for hints, `elevation.surface.overlay` + `--ds-shadow-overlay` for toasts and tooltips. Never use a shadow without its surface or vice versa; never stack decorative shadows.
-
-## Interaction chrome
-
-- Primary actions (evaluate, skip, sign-in primary) use the brand-bold recipe: `--interaction-primary` background, `--interaction-on-primary` text, `hovered`/`pressed` steps on hover/active.
-- Secondary and subtle actions use the neutral recipe: `color.background.neutral` background (or transparent for subtle), text `--text-primary`/`--text-secondary`, `hovered` step on hover, no visible border.
-- Chips and demo suggestions are borderless neutral pills.
-- Focus is always the ADS focus ring: 2px `--focus-ring` outline with 2px offset (inputs switch their border to `--focus-ring` with an inset ring instead).
-- Text selection uses brand blue with inverse text.
-- An activated verdict row (`aria-pressed="true"`) uses `color.background.selected`.
+- Font: **Inter Variable** (self-hosted via `@fontsource-variable/inter`), `font-feature-settings: "cv11", "ss01"`, antialiased. System fallbacks per `--font-sans`.
+- Headings are ink (`--color-ink`), weight 600, `tracking-tight` (hero: `md:tracking-tighter`). Size carries hierarchy, not weight: marketing hero 36–60px, section titles 30px, app page titles 24px, panel titles 15–16px.
+- Working text: 13px default in the app (11–12px for labels/eyebrows), 15–16px on marketing surfaces. Supporting copy uses the muted ramp; never solve hierarchy with new colours.
+- All prices, percentages, scores, and counts use `tabular-nums` (the `text-metric` utility or inline `font-variant-numeric`).
+- Sentence case everywhere; the fixed vocabulary and copy strings in `src/lib/copy.ts` (CNT-1..6) are normative and must not be rephrased.
+- Chrome is border-first: cards are `border border-hairline` + `shadow-xs` at most. Shadows above `xs` belong only to floating elements (toasts, tooltips, command palette, drawers) and the marketing product frame (`--shadow-frame`).
+- Marketing sections breathe: 80–112px vertical rhythm, content at `max-w-6xl` (hero copy `max-w-3xl`).
 
 ## Application composition
 
-Use a route-aware shell with shared FunctionGraph branding and Clerk account state. Navigation uses ordinary links, preserves browser Back/Forward behavior, and restores focus to the destination heading. Keep account controls compact; do not introduce a persistent dashboard navigation rail. The account strip sits on `--surface-1` with a subtle bottom hairline—no dark band.
+### App shell (`src/components/shell/`)
 
-### Landing surface
+`AppShell` wraps `/graph`, `/inventory`, `/history`, `/settings` (wired in `RootRouter`): a 256px sidebar (collapsible to a 64px icon rail; preference in localStorage) on `--color-shell` with no hard border tricks beyond one hairline, beside a white canvas. Sidebar order: wordmark, primary **Check a product** button (the only accent block in the sidebar), nav (Evaluate, Inventory, History, Settings) with `aria-current="page"`, spacer, account status card pinned at the bottom. Below 768px the sidebar becomes a top bar plus a slide-over drawer (Escape closes, focus managed).
 
-The public landing surface is a short entry point built from the existing tokens. It contains:
+Auth state (guest / loading / signed-out / signed-in) renders through `AuthStatusSlot` (`src/auth/AuthShell.tsx`): AuthShell selects the status block once, and the shell (or Settings page) mounts it. All four `data-auth-state` variants must stay reachable and keep their exact copy.
 
-- a concise capability-level value proposition and primary `Open the graph` action;
-- a clear explanation that guests can explore the bundled demo;
-- one compact three-step sequence: capture what you own, map a product, inspect the genuinely-new delta;
-- a privacy/account note: photos and review details are ephemeral, while confirmed items belong to the signed-in account;
-- shared sign-in/account controls and a small footer.
+### Landing surface (`src/pages/LandingPage.tsx` + `src/pages/landing/`)
 
-Keep the content within a restrained reading width and one or two viewport lengths. Use typography, hairlines, and small grouped steps rather than a giant hero, live D3 preview, gradient, testimonial wall, pricing grid, or repeated marketing cards.
+Section sequence: sticky blur nav (border appears on scroll) → hero (eyebrow chip, headline, sub, primary `Open the graph` + ghost anchor, soft radial gradient fading to white) → static product frame (hand-built mock of graph + verdict, `--shadow-frame`; deliberately **not** a live GraphCanvas) → how-it-works 3-card row → bento feature grid on `--color-shell` (large tile hosts the ambient D3 brand-art graph) → privacy section (the real ephemeral-photo / account-scoped story; **no fabricated testimonials, ratings, or aggregate savings claims**) → FAQ (`<details>` accordion) → final CTA gradient panel → footer on `--color-wash`.
 
-### Graph surface
+### Evaluate surface (`src/App.tsx` + `src/components/evaluate/`)
 
-Use one compact graph application shell without a persistent top header. It contains:
+- Top bar inside the canvas column: page title, inventory status + reserved photo action (`#photo-action-slot`), the command bar, inline error banner, and the capability chip stream during choreography.
+- Command bar (`ProductCommandBar`): search-glyph input styled as a command field, ⌘K/Ctrl-K focuses it, integrated accent submit, the three exact demo chips (`Convection countertop oven — $129`, `4th USB-C cable — $15`, `Mini camera drone — $89`) always visible. Errors are friendly inline text; no spinner (results are fetched before choreography starts).
+- Graph canvas: full-bleed, dotted `--canvas-dot` background, all remaining viewport. Chrome floats as blurred pills: view label + back control (top-left), legend (top-right), hint pill (bottom-centre), route/notice toasts. Never wrap the graph in a dashboard grid.
+- Contextual rail: one at a time (verdict, item inspector; photo review later), 380px on ≥1024px with `border-l`, independent scroll, `--animate-panel-in` entrance; below 1024px it stacks under a fixed-height canvas.
 
-- the purchase-evaluation title and one-line explanation;
-- a back control whenever the user is off home level;
-- product command bar and mandatory example chips;
-- a compact photo action and explicit inventory status;
-- the graph workspace, route toast, and one contextual rail used by the verdict, photo review, or item inspector.
+### Verdict rail (`VerdictPanel`)
 
-The graph occupies most of the available viewport and most desktop width. Do not surround it with a conventional dashboard grid. On desktop, place the active contextual rail beside the graph with a sensible maximum width and fit the camera to both; never replace or obscure the graph. Show only one rail mode at a time and preserve the user's graph context when it changes.
+Order: product name + price → recommendation badge (emerald `copy.approval` when nothing is covered; amber "Mostly covered…" at ≥50% coverage, neutral otherwise) → coverage card (96px accent donut `CoverageRing` beside the exact `X of Y covered` and `N % of this, you already own` lines) → 2-up stat cards (genuinely-new count, price per new capability) → capability checklist grouped **Already covered (n)** / **New to you (n)** (grouping is presentational; row order within groups preserved) → delta economics + alternative suggestion card → sticky action footer (`Skip this purchase` accent primary, `I still need it` ghost revealing the reason form → `Buy anyway`).
 
-### Product command bar
-
-Treat product entry as a precise command-bar control styled as an ADS text field: compact but prominent, `color.background.input` surface, `color.border.input` hairline, integrated brand-bold submit action, visible focus ring, and resilient wrapping for long input. Keep it vertically tight so the graph receives the majority of the viewport. Errors are friendly inline text that explains the next step; never apologize. The arrival flow has no spinner because the full result is fetched before choreography starts.
-
-Always expose these exact one-tap demo strings, matching the demo cache:
-
-- `Convection countertop oven — $129`
-- `4th USB-C cable — $15`
-- `Mini camera drone — $89`
-
-Chips wrap or scroll horizontally rather than shrinking below legibility.
-
-## Graph workspace
-
-Home and room views are data swaps and camera moves on the same force-directed canvas. Keep drag, zoom, pan, room navigation, and force behaviour intact. Use a light dotted node-editor background with faint neutral dots (`--canvas-dot`); avoid strong grid lines and visually loud canvas controls. On desktop, the app shell fits the viewport without a document scrollbar so the graph receives the remaining height.
-
-Never hardcode node positions or domain membership. Seed structural updates from current positions, let clusters emerge from shared capabilities, allow the simulation to cool fully, and never add idle motion. Reheat only for structural change: phase, expansion, a new result, or local drag. Hover, selection, row pulse, and other cosmetic highlights must not reheat the full simulation.
-
-The relationship hierarchy is home room → owned item → capability. Entering a room swaps the same canvas to its item/capability graph. Owned items connect only to capability hubs or their revealed unique mini-capabilities; item-to-item edges are forbidden. Selecting an item applies the ADS selected treatment to that item, a warm emphasis to every connected capability node, and stronger neutral strokes to their inventory edges while visibly dimming unrelated nodes and inventory edges. It must not recolour verdict semantics or reheat physics unless unique mini-capabilities are structurally revealed.
-
-### Inventory states and empty graph
-
-Guests see the bundled 36-item inventory and all three offline examples. Signed-in users see only their personal inventory, with distinct loading, error, empty, and populated states. Never flash guest items while account data loads and never substitute them after an error.
-
-The empty personal state keeps the graph workspace visually stable but replaces unusable graph controls with a concise explanation and primary photo action. It tells the user that their account starts empty and that confirmed items will build the graph. Loading uses a quiet structural placeholder; errors retain a retry and an actionable hint without inventing data.
-
-### Photo capture and review
-
-Place one prominent but compact photo action near inventory status. It offers environment-camera capture and ordinary file upload to signed-in users; guests receive sign-in before any file picker opens. State the supported JPEG, PNG, and WebP formats and explain that HEIC is not supported in this release.
-
-Use the contextual rail for preparation, scan status, review, and confirmation on wide screens; use an in-flow full-width sheet below the graph on narrow screens. Show a local preview while it is needed, then release it on cancel, completion, navigation, or unmount. Scanning uses plain status copy, not a fake percentage.
-
-Review every candidate as a compact selectable row. Name, room, and quantity are editable with inline validation; detected capabilities and tiers are visible but read-only. Confidence, evidence, and warnings help review but are visually secondary and are never represented as saved fields. Keep confirm disabled until at least one selected row is valid. Saving succeeds as one transaction, refreshes the graph, announces the result, and clears the entire draft; failure preserves the review so the user can retry.
-
-### Item inspector
-
-Selecting a saved personal item opens the contextual rail without changing its existing selected graph highlight. Display name, room, quantity, canonical capabilities, `photo` source, and last-updated time. Edit mode permits name, room, and quantity only. Apply the graph update after the server confirms success, not optimistically.
-
-Deletion uses a separate explicit confirmation naming the item. A failed save or delete keeps the last confirmed graph state and shows the server hint. Closing the inspector or navigating away discards unsaved edits. Focus enters the inspector predictably and returns to the selected node when it remains available.
-
-### Node tooltips
-
-Render one viewport-clamped HTML tooltip above the SVG layers, styled as an ADS overlay (`elevation.surface.overlay` + `--ds-shadow-overlay`). Open it on pointer hover and keyboard focus, support touch inspection, and dismiss it on pointer leave, blur, Escape, view change, node removal, or navigation. Position and visibility are cosmetic state: they never mutate D3 data, restart physics, or move nodes. Connect focused nodes to visible content with `aria-describedby` or equivalent semantics and avoid duplicate screen-reader announcements.
-
-Tooltip content is compact and type-specific: rooms show item/hotspot counts and their action; unscanned rooms show the scan action; items show room, quantity, capability count, and a short capability preview; shared hubs show owner count and a short owner preview; unique minis show owner and tier; new capabilities show provisional/new status and tier; ghosts show product, price when known, and evaluation phase. Every essential fact and action remains reachable without hover.
-
-### Node taxonomy
-
-| Node | Required treatment |
-|---|---|
-| Item node | Blue-subtlest circle (`--item-node`) with soft blue border, small item dot, centred wrapped item name in `--item-node-text`, optional `+N` unique-capability indicator, thin border, and no glow. Derive its capped diameter from word count, wrapped-line count, longest line, and badge space. Selection applies the ADS selected tokens and highlights all connected capability nodes and edges. |
-| Capability hub | Orange-subtlest pill (`--capability-node`) with a clear lowercase capability label in `--capability-node-text`. Degree may change prominence; hot hubs get a heavier `--capability-node-text` stroke, never new colours. Visible only under the hub rules in `PDD.md`. |
-| New capability hub | `--new` border, `--new-soft` tint, and slightly more weight than a normal hub. No glow. |
-| Ghost | Dashed coral circle (`--covered` stroke on `--covered-soft`) showing the wrapped product name, price when known, and `considering`. Size the diameter from the product's word count and longest wrapped line, with a firm maximum so it cannot dominate the graph. It is the only glowing node (`--ghost-glow`); keep the glow subtle. |
-| Mini capability | Small, dim, dashed capability-tinted pill hidden until its item expands. Allow one expanded item at a time. |
-| Room | Neutral `--surface-1` circle with `--border-strong` stroke, sized by item count with a clear label. A home-level hotspot may carry the only amber badge (`--amber` fill, inverse text). The routed room receives announced emphasis. |
-| Unscanned room | Dim, dashed room on `--surface-2` with a semantic "scan this room" action. |
-
-Dashed treatment communicates provisional/not-owned state according to `PDD.md`; do not use arbitrary decorative dashes.
-
-### Edge taxonomy
-
-| Edge | Required treatment |
-|---|---|
-| Inventory primary | Neutral `--edge-inventory`, approximately `1.8×` secondary width. |
-| Inventory secondary | Thinner neutral `--edge-inventory`. |
-| Scan | Very faint dashed `--edge-faint` line, briefly fanning to every relevant node or room. |
-| Covered | Coral `--covered`. |
-| New | Green `--new`, slightly heavier. |
-| Pulse | Animated coral dash-flow (`--pulse-glow` halo) for no more than two seconds; a restrained transient halo is permitted only as required by VIS-4. |
-| Cross-room | Rare, thin, dashed `--edge-faint`; only for true cross-domain overlap. |
-
-Do not give every edge equal contrast. Inventory structure should recede behind active verdict evidence.
-
-## Verdict panel
-
-The panel is a compact inspector on `--surface-2`, not a stack of large cards. Render this exact order:
-
-1. Product name and price.
-2. `X of Y covered`.
-3. Coverage bar.
-4. `N % of this, you already own`.
-5. Capability checklist rows.
-6. Delta economics.
-7. Alternative suggestion.
-8. Actions.
-
-Use the exact delta and approval copy from CNT-4 in `PDD.md`. The approval path, including `Genuinely new — nothing you own does this`, must feel as complete as the redundancy verdict—not like an error, warning, or empty state.
-
-Each checklist row is an actual semantic interactive control. A covered row contains a coral state indicator, capability name, tier, best coverer, and additional coverer count when applicable (`{coverer} + N more`). A new row contains a green state indicator, capability name, and `not owned — new`. Pair colour with text, icon, line style, or another non-colour cue.
-
-Rows and edges must derive from the same verdict object. Preserve these exact IDs:
+Rows keep their contract: semantic buttons, `aria-pressed`, accessible name `"{capability}: {source}. Highlight its graph edge"`, activation pulses exactly the edge with the matching ID:
 
 ```ts
 ghost->${capSlug}
 e:${itemId}->${capSlug}
 ```
 
-Row activation resolves its single corresponding edge by ID and pulses exactly that edge. Never use text matching, array position, DOM traversal, or duplicated verdict state.
+On Skip and Buy-anyway, the decision is appended to localStorage (`src/state/decisionStore.ts`, key `functiongraph:decisions:v1`) for the History page. Decisions never leave the device.
 
-Actions are:
+### Inventory, History, Settings pages
 
-- Primary: `Skip this purchase`—brand-bold button; close the verdict and preserve the impact update in application state.
-- Secondary: `I still need it`—neutral button; reveal `What's it for? teaches the graph`, then preserve the existing Buy anyway path.
+- **Inventory** (`src/pages/InventoryPage.tsx`): items grouped by room in hairline card lists; capability chips per item; signed-in accounts get inline edit (name/room/quantity via the existing PATCH endpoint) and confirm-by-name delete, refreshing through the inventory hook's `retry()`. Guests see the bundled home read-only with an explainer. All five inventory states (guest/loading/error/empty/populated) stay visually explicit; the disabled "Add from photo — coming next" affordance remains.
+- **History** (`src/pages/HistoryPage.tsx`): stat cards ($ kept, decision count, kg avoided via `KG_PER_DOLLAR`) above the decision list (product, price, date, coverage, Skipped/Bought-anyway badge, reason). Empty state routes to Evaluate.
+- **Settings** (`src/pages/SettingsPage.tsx`): account (AuthStatusSlot), local-data section (clear history with inline confirm + count), about.
 
-Do not frame the tool as a blocker or remove the Buy path.
+## Graph workspace
+
+The force-directed canvas rules from the previous edition remain in force: home and room views are data swaps and camera moves on one canvas; keep drag, zoom, pan, room navigation, and force behaviour intact; never hardcode positions or domain membership; reheat only for structural change, never for hover/selection/pulse.
+
+Node taxonomy under the new palette (all styling in `src/styles/graph.css`):
+
+| Node | Treatment |
+|---|---|
+| Room | White circle, `--border-strong` hairline stroke, capitalised label. Winner keeps the animated neutral route ring. Hotspot badge stays amber with white text. |
+| Unscanned room | Dim, dashed, on `--surface-2`. |
+| Item | Cool indigo-tinted circle (`--item-node` ramp) — structural cue, never verdict. Selection swaps to `--color-accent-soft` fill + accent stroke (interaction chrome). |
+| Capability hub | Stone pill (`--capability-node` ramp), lowercase label; hot hubs get the heavier stroke. Connected-to-selection hubs take the accent wash. |
+| New capability hub | `--new` stroke on `--new-soft`, slightly heavier than a normal hub. No glow. |
+| Ghost | Dashed `--color-ghost` circle on `--color-ghost-soft` with the only glow (`--ghost-glow`). Dashed = provisional. |
+| Mini capability | Small dim dashed stone pill, revealed by item expansion. |
+
+Edge taxonomy: inventory edges neutral and receding (primary ≈ 1.8× secondary); **covered edges slate at 1.4px/60% opacity (they recede)**; **new edges emerald at 2.4px/full opacity (they pop)**; scan lines very faint and dashed; the row-tap pulse is **accent** dash-flow with `--pulse-glow`, ≤2s (VIS-4). Do not give every edge equal contrast.
+
+Tooltips stay single, viewport-clamped, overlay-shadowed, cosmetic-only (never mutate D3 data or restart physics), with the type-specific content and dismissal rules from `PDD.md`.
 
 ## State and motion
 
-One reducer owns the flow:
+The reducer flow, beat order, and motion budgets are unchanged from `PDD.md` §6 (SM-1..9): `resting → extracting → scanning → routing → settling → verdict`, route toast held 600ms before camera motion, chips staggered ~320ms (`chip-in`), scan fan ≤0.9s, camera 700–900ms, settle ≤1.5s, verdict panel ~300ms (`--animate-panel-in`), pulse ≤2s (`dash-flow`). The load-bearing keyframes live in `src/styles/graph.css` (`route-ring`, `dash-flow`, `toast-in`, `chip-in`) and `src/styles/index.css` (`panel-in`, `fade-up`) — recolour them if tokens change, never retime them casually.
 
-```text
-resting → extracting → scanning → settling → verdict
-```
-
-`route` remains a distinct home-level sub-beat. Fetch the complete evaluation result first, then reveal it client-side in this order:
-
-1. Capability chips appear; primary is brighter and secondary is dimmer.
-2. The pinned ghost briefly scans every node, or every room at home level.
-3. The winning room is announced by a route toast; other rooms fade to about 35%.
-4. Hold the toast for `600ms` before camera movement.
-5. Ease the camera into the room. If no match clears the threshold, do not dive; remain home and show approval.
-6. Unpin the ghost and let the force simulation move it into the cluster.
-7. Replace scan lines with real covered and new edges.
-8. Enter the verdict panel beside the graph.
-
-Never manually tween a node journey. Movement comes from state changes plus force simulation reactions. The camera moves only after user input or an announced route.
-
-Motion budgets:
-
-- micro-interactions: `150–300ms`;
-- chip stagger: about `320ms`;
-- scan fan: at most `0.9s`;
-- camera: `700–900ms`;
-- settle: at most about `1.5s`;
-- verdict panel: about `300ms`;
-- route toast hold: exactly `600ms` before camera motion;
-- edge pulse: at most `2s`.
-
-Use eased motion; only edge dash-flow may be linear. Do not add decorative entrances unrelated to computation.
-
-Photo preparation, scanning, review, and saving are explicit state changes but do not join the four-beat product-evaluation choreography. Use a quiet indeterminate status for real waiting, prevent duplicate submission, and avoid fabricated progress. Inventory refresh may structurally rebuild the graph only after confirmation succeeds.
-
-### Reduced motion
-
-Under `prefers-reduced-motion`:
-
-- show capability chips immediately;
-- skip choreography directly to the verdict;
-- avoid animated camera movement where possible;
-- replace edge animation with a strong static highlight;
-- preserve every action, relationship, and inspection affordance.
-
-Every new animation needs this escape hatch.
+Under `prefers-reduced-motion`: chips appear immediately, choreography skips to the verdict, the pulse becomes a static strong accent highlight, the route ring freezes visible, the landing ambient graph renders a settled static layout, and Tailwind `motion-safe:` gates every new entrance animation.
 
 ## Responsive behaviour
 
-At and above roughly `720px`, graph and verdict sit side by side, the graph receives most width, input stays easy to reach, and the verdict has a bounded width.
-
-Below roughly `720px`:
-
-- keep one product flow and one canvas;
-- render the graph first and stack the verdict beneath it;
-- place photo review and the item inspector in the same full-width contextual position as the verdict;
-- keep the command bar and actions reachable one-handed;
-- wrap or horizontally scroll example chips;
-- preserve generous touch targets and readable labels;
-- make every important action available without hover;
-- never shrink node labels into illegibility.
-
-On the landing surface, stack the three-step sequence and keep the primary graph action visible without horizontal scrolling. Do not create a separate mobile route, graph, or reduced product flow.
+- ≥1024px: graph and verdict side by side; the graph gets most width; the rail is bounded at 380px.
+- <1024px: verdict/inspector stacks below a stable-height canvas; one product flow, one canvas.
+- <768px: sidebar becomes top bar + drawer; example chips wrap; touch targets stay generous; every action reachable without hover.
+- Landing: sections stack cleanly; the primary CTA is visible without horizontal scrolling; no separate mobile route.
 
 ## Accessibility
 
-- Use semantic HTML for inputs, buttons, notices, and interactive verdict rows.
-- Make all controls and rows keyboard-operable with the ADS focus ring (`--focus-ring`), always visible on focus.
-- Give graph actions accessible names where practical and expose equivalent non-canvas controls for essential actions.
-- Make tooltip content available through focus and touch, with Escape dismissal and no hover-only actions.
-- Associate photo-review validation with its candidate fields, announce scan/save status without fake progress, and return focus after cancel or confirmation.
-- Treat route headings as focus destinations and provide a useful not-found page with links to both routes.
-- Do not rely on colour alone for `covered` versus `new`; retain text and shape/style cues.
-- Use adequate touch padding and readable contrast on every surface; ADS text tokens on ADS surfaces meet WCAG AA by construction—preserve those pairings.
-- Announce route, error, and result changes appropriately without producing duplicate screen-reader chatter.
-- Respect reduced motion without removing functionality or inspectability.
-
-The ADS MCP server ships accessibility tooling: run `ads_analyze_localhost_a11y` against the dev server (both surfaces) after visual changes, and `ads_analyze_a11y` on new component code.
-
-## Tooling
-
-- **ADS MCP server** — configured in `.mcp.json` (hosted endpoint `https://mcp.atlassian.com/v1/ads/public/mcp`; stdio fallback `npx -y @atlaskit/ads-mcp`). Use `ads_search_tokens` / `ads_get_all_tokens` before choosing any token, `ads_search_components`/`ads_search_icons` for reference recipes, and `ads_plan` for multi-resource lookups. Prefer `ads_*` tools; `atlaskit_*` tools are fallback research only.
-- **`@atlaskit/tokens`** — the only Atlaskit runtime dependency. It provides `setGlobalTheme` and the `--ds-*` custom properties. Do not add Atlaskit component packages; the UI is bespoke D3 + custom components on React 19, and components are adopted token-first.
-- Token values can also be read offline from the installed package (`@atlaskit/tokens/tokens-raw` and `token-names`).
-- Future option: `@atlaskit/eslint-plugin-design-system` if the repo adopts ESLint, to lint token usage in CI.
-
-## Component guidance
-
-Reuse the current framework, graph library, styling approach, and working application logic. Centralize the token bindings above and prefer focused reusable primitives over repeated class strings. Existing equivalents are preferable to parallel components; useful boundaries include:
-
-```text
-AppShell
-LandingPage
-GraphPage
-ProductCommandBar
-DemoProductChips
-InventoryStatus
-PhotoCapture
-PhotoReview
-ItemInspector
-GraphWorkspace
-GraphTooltip
-RoomNode
-ItemNode
-CapabilityHubNode
-GhostNode
-GraphEdge
-RouteToast
-VerdictPanel
-CoverageSummary
-VerdictRow
-DeltaEconomics
-VerdictActions
-ImpactCounter
-```
-
-Keep graph, inventory, and verdict data derived, never duplicated. Page components consume one normalized active-inventory source: guest JSON for guests and Clerk-scoped personal data for accounts. Do not put database rows directly into D3 selections or hardcode verdict percentages, demo outcomes, node positions, or scoring results into UI components. Preserve all fixed copy, semantic laws, and IDs from `PDD.md`.
+- Semantic HTML for inputs, buttons, notices, interactive verdict rows; keyboard operability everywhere with the visible accent focus ring (`:focus-visible` outline).
+- Covered vs new never relies on colour alone (icons + text + weight/dash in the graph). Slate-vs-emerald also survives red-green colour blindness by luminance.
+- Live regions: route/notice toasts, inventory status, item-selection status (`sr-only`), error banners as `role="alert"`; no duplicate screen-reader chatter.
+- Route changes focus the destination `[data-route-heading]` (RootRouter behaviour) — every page's `h1` carries it.
+- Reduced motion is honoured without removing functionality or inspectability.
 
 ## Do / do not
 
 ### Do
 
-- Make the graph the protagonist and the shell a quiet frame.
-- Keep the landing surface compact and graph-free; keep the graph surface focused on the working graph.
-- Bind every colour, radius, shadow, and weight to an ADS token through the `:root` properties.
-- Use the coral (red accent) ramp only for covered/redundant evidence and the green accent ramp only for genuinely new evidence.
-- Use brand blue only for interaction chrome: primary buttons, focus, selection, links.
-- Reserve amber for home hotspot badges and glow for the ghost, apart from the brief VIS-4 pulse exception.
-- Pair every raised/overlay surface with its ADS shadow token.
-- Keep panels dense, typography calm, controls compact, and supporting text muted.
-- Preserve force-driven emergence, edge inspectability, offline demo arcs, approval, and both decision actions.
-- Make guest, account loading, empty, error, and populated inventory states visually explicit.
-- Discard raw photos and review-only information after cancel, navigation, failure cleanup, or successful confirmation.
-- Verify desktop, mobile, keyboard, reduced-motion, simulation cooling, and every row-to-edge mapping.
+- Keep the graph the protagonist of Evaluate and the shell a quiet frame.
+- Bind every colour/radius/shadow to the `@theme` tokens; extend the token block rather than inlining values.
+- Keep covered evidence quiet (slate + check) and new evidence loud (emerald + sparkle); keep indigo strictly interactional.
+- Pair every floating surface with `--shadow-float`/`--shadow-overlay`; keep resting cards border-first.
+- Preserve force-driven emergence, edge inspectability, the offline demo arcs, the approval state, and both decision actions.
+- Keep guest/loading/empty/error/populated inventory states visually explicit; keep photos and review data ephemeral.
+- Keep marketing content honest: real product behaviour and the real privacy story only — no invented social proof or statistics.
+- Verify desktop, mobile, keyboard, reduced-motion, simulation cooling, and every row-to-edge mapping after visual changes.
 
 ### Do not
 
-- Do not introduce any speaking colour beyond coral and green; brand blue never carries meaning beyond interaction chrome.
-- Do not use ADS danger/warning ramps for banners or graph elements—red belongs to covered evidence alone.
-- Do not add gradients, glass effects, neon glows, strong grids, decorative shadows, huge type, giant radii, or large floating cards.
-- Do not turn the graph surface into a landing page, dashboard, or issue tracker; do not let the landing surface grow into a generic marketing site.
-- Do not make all nodes or edges equally loud.
+- Do not add speaking colours beyond the covered/new pair (plus the restricted amber badge); do not use red/danger ramps for errors.
+- Do not restyle the ghost's glow onto anything else, or add idle node motion.
+- Do not turn the Evaluate surface into a dashboard grid, or let floating chrome obscure the graph.
 - Do not hardcode positions, domains, scores, percentages, or demo-only visual outcomes.
 - Do not reheat physics for hover, highlighting, selection, or edge pulse.
-- Do not persist raw images, provider output, confidence, evidence, warnings, or review drafts; do not expose capability editing or manual item creation.
-- Do not add idle node motion, arbitrary interactions, a browser extension, persistent override learning, or other remaining `SCP-1` scope.
-- Do not add Atlaskit component packages or copy raw hex values out of ADS documentation—consume tokens.
+- Do not rephrase `copy.ts` strings, alter demo chip labels, or change the edge/row ID contracts.
+- Do not persist decisions, raw images, provider output, confidence, evidence, warnings, or review drafts to the server.
